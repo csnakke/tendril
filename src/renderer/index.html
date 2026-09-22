@@ -1,0 +1,317 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' file: data: https: asset:; font-src 'self' file: data:; script-src 'self'" />
+    <title>Tendril</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div id="app">
+    <header id="toolbar">
+      <div class="group">
+        <button id="menu-btn" class="icon-btn" title="Menu"><i data-icon="menu"></i></button>
+        <button data-cmd="toggleSidebar" class="icon-btn" title="Toggle sidebar (Ctrl+B)"><i data-icon="panel-left"></i></button>
+      </div>
+      <span class="sep"></span>
+      <div class="group">
+        <button data-cmd="open" class="icon-btn" title="Open (Ctrl+O)"><i data-icon="folder-open"></i></button>
+        <button data-cmd="save" class="icon-btn" title="Save (Ctrl+S)"><i data-icon="save"></i></button>
+      </div>
+      <span class="sep"></span>
+      <div class="group">
+        <button data-cmd="toc" title="Insert / remove table of contents (Ctrl+Shift+T)"><i data-icon="list"></i>TOC</button>
+        <button data-cmd="insertTable" id="insert-table-btn" title="Insert table (Ctrl+Alt+T)"><i data-icon="table"></i>Table</button>
+        <button data-cmd="insertImage" title="Insert image (Ctrl+Alt+I)"><i data-icon="image"></i>Image</button>
+      </div>
+      <span class="sep"></span>
+      <div class="group">
+        <button id="export-btn" class="export-btn" title="Export the note as HTML or PDF"><span>Export</span><i data-icon="chevron-down"></i></button>
+      </div>
+      <span class="grow"></span>
+      <span id="filename">untitled.md</span>
+      <span class="grow"></span>
+      <div id="modes" role="group" aria-label="View mode">
+        <button data-cmd="viewEdit" data-mode="edit" title="Edit (Ctrl+1)"><i data-icon="pencil"></i></button>
+        <button data-cmd="viewSplit" data-mode="split" title="Split (Ctrl+2)"><i data-icon="columns"></i></button>
+        <button data-cmd="viewReading" data-mode="reading" title="Reading (Ctrl+3)"><i data-icon="book-open"></i></button>
+      </div>
+      <button data-cmd="toggleLivePreview" class="icon-btn" title="Live preview in Edit view (Ctrl+Shift+E)"><i data-icon="eye"></i></button>
+      <button data-cmd="settings" class="icon-btn" title="Settings (Ctrl+,)"><i data-icon="settings"></i></button>
+      <span class="sep"></span>
+      <div id="win-controls">
+        <button data-win="minimize" title="Minimize"><i data-icon="minus"></i></button>
+        <button data-win="maximize" title="Maximize / Restore"><i data-icon="square"></i></button>
+        <button data-win="close" title="Close"><i data-icon="x"></i></button>
+      </div>
+    </header>
+    <div id="workspace">
+      <div id="sidebar-rail" title="Expand sidebar (Ctrl+B)"><button id="sidebar-expand"><i data-icon="chevrons-right"></i></button></div>
+      <aside id="sidebar" aria-label="File explorer">
+        <div id="sidebar-head">
+          <img class="sb-logo" alt="" />
+          <span class="sb-title">Tendril</span>
+          <button id="sidebar-collapse" title="Collapse sidebar (Ctrl+B)"><i data-icon="chevrons-left"></i></button>
+        </div>
+        <label id="sidebar-search" class="sb-row"><i data-icon="search"></i><input type="search" placeholder="Search notes" autocomplete="off" spellcheck="false" /></label>
+        <button id="sidebar-new" class="sb-row" title="New from template in this folder"><i data-icon="plus-circle"></i><span>New note</span></button>
+        <div id="sidebar-section">
+          <button id="root-name" title="Collapse / expand"><span class="name"></span></button>
+          <button id="root-menu" title="Folder…"><i data-icon="chevron-down"></i></button>
+          <span id="root-path"></span>
+        </div>
+        <div id="tree" role="tree"></div>
+        <div id="sidebar-foot"><button id="sidebar-trash" title="Open the system Trash"><i data-icon="trash"></i><span>Trash</span></button></div>
+      </aside>
+      <div id="sidebar-split" aria-hidden="true"></div>
+      <main id="panes" data-mode="split">
+        <section id="editor" aria-label="Editor"></section>
+        <section id="preview" class="markdown-body" aria-label="Preview"></section>
+      </main>
+    </div>
+    <footer id="statusbar"><span id="status-path" title="Full path of the open file"></span></footer>
+    </div>
+    <div id="resize-handles" aria-hidden="true">
+      <div data-edge="n"></div><div data-edge="s"></div><div data-edge="e"></div><div data-edge="w"></div>
+      <div data-edge="ne"></div><div data-edge="nw"></div><div data-edge="se"></div><div data-edge="sw"></div>
+    </div>
+    <dialog id="settings">
+      <div class="st-head">
+        <h2>Settings</h2>
+        <button type="button" id="settings-close" class="st-close" title="Close (Esc)"><i data-icon="x"></i></button>
+      </div>
+      <div class="st-body">
+        <nav class="st-nav" aria-label="Settings sections">
+          <button type="button" data-page="appearance" class="active">Appearance</button>
+          <button type="button" data-page="fonts">Fonts</button>
+          <button type="button" data-page="icons">Icons</button>
+          <button type="button" data-page="editor">Editor</button>
+          <button type="button" data-page="keybindings">Keybindings</button>
+          <button type="button" data-page="images">Images</button>
+          <button type="button" data-page="templates">Templates</button>
+          <button type="button" data-page="export">Export</button>
+          <button type="button" data-page="ai">AI</button>
+        </nav>
+        <div class="st-pages" tabindex="-1">
+          <section data-page="appearance" class="active">
+            <h3>Appearance</h3>
+            <div class="setting">
+              <div class="info"><div class="name">Mode</div><div class="desc">Follow the system, or always use the theme's light or dark variant.</div></div>
+              <div class="control segmented" role="radiogroup">
+                <label><input type="radio" name="theme" value="light" /><span>Light</span></label>
+                <label><input type="radio" name="theme" value="dark" /><span>Dark</span></label>
+                <label><input type="radio" name="theme" value="system" /><span>System</span></label>
+              </div>
+            </div>
+            <div class="setting stacked">
+              <div class="info"><div class="name">Theme</div><div class="desc">Colours for the window, editor and preview.</div></div>
+              <div id="theme-grid" class="theme-grid"></div>
+            </div>
+            <div class="setting stacked">
+              <div class="info"><div class="name">Obsidian community themes</div><div class="desc">Import the colour palette of any <a href="https://obsidian.md/themes" target="_blank">Obsidian theme</a>. Installed themes appear above and can be removed from their card.</div></div>
+              <div class="search-picker">
+                <input type="search" id="theme-search" placeholder="Search themes… (Enter installs the first match)" autocomplete="off" />
+                <ul class="results" id="theme-results"></ul>
+              </div>
+            </div>
+            <div class="setting">
+              <div class="info"><div class="name">Window border</div><div class="desc">Colour of the frame around the app.</div></div>
+              <div class="control">
+                <input type="color" id="border-color" />
+                <button type="button" id="border-reset">Theme default</button>
+              </div>
+            </div>
+          </section>
+          <section data-page="fonts">
+            <h3>Fonts</h3>
+            <p class="lead">Pick an installed font, or search <a href="https://www.nerdfonts.com" target="_blank">Nerd Fonts</a> and press Enter to download one. Fonts are stored inside the app and embedded in exports.</p>
+            <div class="setting stacked">
+              <div class="info"><div class="name">Interface</div><div class="desc">Toolbar, sidebar and dialogs.</div></div>
+              <div class="font-picker">
+                <select data-target="uiFont"><option value="">Default</option></select>
+                <div class="search-picker">
+                  <input type="search" data-target="uiFont" placeholder="Search Nerd Fonts…" autocomplete="off" />
+                  <ul class="results" data-target="uiFont"></ul>
+                </div>
+                <label class="size">Size <input type="number" data-size="uiFontSize" min="9" max="24" step="0.5" /> px</label>
+              </div>
+            </div>
+            <div class="setting stacked">
+              <div class="info"><div class="name">Editor &amp; preview</div><div class="desc">Document text; code uses the same family.</div></div>
+              <div class="font-picker">
+                <select data-target="editorFont"><option value="">Default</option></select>
+                <div class="search-picker">
+                  <input type="search" data-target="editorFont" placeholder="Search Nerd Fonts…" autocomplete="off" />
+                  <ul class="results" data-target="editorFont"></ul>
+                </div>
+                <label class="size">Size <input type="number" data-size="editorFontSize" min="9" max="40" step="0.5" /> px</label>
+              </div>
+            </div>
+          </section>
+          <section data-page="icons">
+            <h3>Icons</h3>
+            <div class="setting stacked">
+              <div class="info"><div class="name">Icon set</div><div class="desc">Used across the toolbar, sidebar and file tree.</div></div>
+              <div id="icon-sets" class="icon-sets"></div>
+            </div>
+          </section>
+          <section data-page="editor">
+            <h3>Editor</h3>
+            <div class="setting">
+              <div class="info"><div class="name">Live preview</div><div class="desc">In Edit view, render Markdown in place; the line under the cursor shows its source. <kbd>Ctrl+Shift+E</kbd></div></div>
+              <div class="control"><label class="switch"><input type="checkbox" id="live-preview" /><span></span></label></div>
+            </div>
+            <div class="setting stacked">
+              <div class="info"><div class="name">Multiple cursors</div><div class="desc">Sublime Text-style editing with several carets at once, in Edit and Split view. <kbd>Ctrl</kbd>+click or <kbd>Alt</kbd>+click (<kbd>⌘</kbd>+click on macOS) adds a caret, dragging adds a selection, <kbd>Esc</kbd> returns to one caret. Keyboard shortcuts are listed under <b>Keybindings</b>, where they can be changed.</div></div>
+            </div>
+          </section>
+          <section data-page="keybindings">
+            <h3>Keybindings</h3>
+            <p class="lead">Click a shortcut and press the new keys. Menu shortcuts apply everywhere; the multiple-cursor ones apply in the editor. Shortcuts the desktop reserves (e.g. <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>↑</kbd> on GNOME) never reach the app.</p>
+            <div class="setting stacked">
+              <div class="kb-head"><span class="grow"></span><button type="button" id="keybindings-reset">Reset all to defaults</button></div>
+              <div id="keybindings" class="kb-list"></div>
+            </div>
+          </section>
+          <section data-page="images">
+            <h3>Images</h3>
+            <div class="setting">
+              <div class="info"><div class="name">Assets folder</div><div class="desc">Name of the folder created next to a note to hold inserted images. Links are written as <code>./assets/name.png</code>.</div></div>
+              <div class="control"><input type="text" id="assets-folder" placeholder="assets" autocomplete="off" spellcheck="false" /></div>
+            </div>
+          </section>
+          <section data-page="templates">
+            <h3>Templates</h3>
+            <div class="setting">
+              <div class="info"><div class="name">Author</div><div class="desc">Fills <code>{{author}}</code> when creating from a template.</div></div>
+              <div class="control"><input type="text" id="author" placeholder="Your name" autocomplete="off" /></div>
+            </div>
+            <div class="setting stacked">
+              <div class="info"><div class="name">Templates folder</div><div class="desc">Every Markdown file in this folder is offered in New from Template. Files using <code>&lt;!-- cover --&gt;</code>, <code>&lt;!-- pagebreak --&gt;</code> or a <code>&lt;style&gt;</code> block are listed as reports, the rest as notes (or sort them into <code>notes/</code> and <code>reports/</code> subfolders).</div></div>
+              <div class="path-row">
+                <input type="text" id="templates-dir" readonly />
+                <button type="button" id="templates-browse">Browse…</button>
+                <button type="button" id="templates-reset" title="Use the app's own folder">Default</button>
+                <button type="button" id="settings-templates-folder">Open</button>
+              </div>
+            </div>
+          </section>
+          <section data-page="export">
+            <h3>Export</h3>
+            <p class="lead">PDF export prints the note as a document: a print stylesheet, a title block from the properties, a contents block, and a running header and footer. HTML export keeps the GitHub look.</p>
+            <div class="setting">
+              <div class="info"><div class="name">Paper</div><div class="desc">Page size of exported PDFs.</div></div>
+              <div class="control segmented" role="radiogroup">
+                <label><input type="radio" name="pdfPaper" value="A4" /><span>A4</span></label>
+                <label><input type="radio" name="pdfPaper" value="Letter" /><span>Letter</span></label>
+              </div>
+            </div>
+            <div class="setting">
+              <div class="info"><div class="name">Text font</div><div class="desc">Body text of the PDF; code always uses the editor font.</div></div>
+              <div class="control segmented" role="radiogroup">
+                <label><input type="radio" name="pdfFont" value="editor" /><span>Editor font</span></label>
+                <label><input type="radio" name="pdfFont" value="sans" /><span>Sans</span></label>
+                <label><input type="radio" name="pdfFont" value="serif" /><span>Serif</span></label>
+              </div>
+            </div>
+            <div class="setting">
+              <div class="info"><div class="name">Header &amp; footer</div><div class="desc">Title and date at the top, "Page n of m" at the bottom of every page.</div></div>
+              <div class="control"><label class="switch"><input type="checkbox" id="pdf-header" /><span></span></label></div>
+            </div>
+          </section>
+          <section data-page="ai">
+            <h3>AI</h3>
+            <p class="lead">Right-click in the editor and choose <b>Prompt Me…</b> to ask a model; its reply is inserted at the cursor, and any selected text is sent along as context. Both providers speak the OpenAI chat API.</p>
+            <div class="setting">
+              <div class="info"><div class="name">Provider</div><div class="desc">Which endpoint answers prompts.</div></div>
+              <div class="control segmented" role="radiogroup">
+                <label><input type="radio" name="llmProvider" value="none" /><span>Off</span></label>
+                <label><input type="radio" name="llmProvider" value="local" /><span>Local LLM</span></label>
+                <label><input type="radio" name="llmProvider" value="openrouter" /><span>OpenRouter</span></label>
+              </div>
+            </div>
+            <div class="ai-provider" data-provider="local">
+              <div class="setting">
+                <div class="info"><div class="name">Server URL</div><div class="desc">Base URL of an OpenAI-compatible server: Ollama <code>http://localhost:11434/v1</code>, LM Studio <code>http://localhost:1234/v1</code>, llama.cpp <code>http://localhost:8080/v1</code>.</div></div>
+                <div class="control"><input type="text" id="llm-local-url" placeholder="http://localhost:11434/v1" autocomplete="off" spellcheck="false" /></div>
+              </div>
+              <div class="setting">
+                <div class="info"><div class="name">Model</div><div class="desc">The model name as the server knows it, e.g. <code>llama3.2</code> or <code>qwen2.5:7b</code>.</div></div>
+                <div class="control"><input type="text" id="llm-local-model" placeholder="llama3.2" autocomplete="off" spellcheck="false" /></div>
+              </div>
+            </div>
+            <div class="ai-provider" data-provider="openrouter">
+              <div class="setting">
+                <div class="info"><div class="name">API key</div><div class="desc">From <a href="https://openrouter.ai/keys" target="_blank">openrouter.ai/keys</a>. Stored in the app's settings file, encrypted where the OS has a keychain; it is never read back into the window.</div></div>
+                <div class="control"><input type="password" id="openrouter-key" placeholder="sk-or-…" autocomplete="off" spellcheck="false" /><button type="button" id="openrouter-key-clear" hidden>Remove</button></div>
+              </div>
+              <div class="setting">
+                <div class="info"><div class="name">Model</div><div class="desc">An <a href="https://openrouter.ai/models" target="_blank">OpenRouter model id</a>, e.g. <code>openai/gpt-4o-mini</code> or <code>anthropic/claude-sonnet-4</code>.</div></div>
+                <div class="control"><input type="text" id="openrouter-model" placeholder="openai/gpt-4o-mini" autocomplete="off" spellcheck="false" /></div>
+              </div>
+            </div>
+            <div class="setting ai-test">
+              <div class="info"><div class="name">Connection</div><div class="desc" id="llm-test-result">Not tested.</div></div>
+              <div class="control"><button type="button" id="llm-test">Test</button></div>
+            </div>
+          </section>
+        </div>
+      </div>
+    </dialog>
+    <dialog id="templates">
+      <div class="tp-head">
+        <h2>New from template</h2>
+        <div class="segmented" role="tablist">
+          <button type="button" data-kind="notes">Notes</button>
+          <button type="button" data-kind="reports">Reports</button>
+        </div>
+        <span class="grow"></span>
+        <button type="button" id="template-open-folder" class="link">Open templates folder</button>
+      </div>
+      <div class="tp-body">
+        <ul id="template-list"></ul>
+        <div id="template-preview" class="markdown-body"></div>
+      </div>
+      <div class="tp-foot">
+        <label>Title <input type="text" id="template-title" placeholder="Document title" autocomplete="off" spellcheck="false" /></label>
+        <span id="template-folder" class="hint"></span>
+        <span class="grow"></span>
+        <button type="button" id="template-cancel">Cancel</button>
+        <button type="button" id="template-create" class="primary">Create</button>
+      </div>
+    </dialog>
+    <dialog id="imagebox" aria-labelledby="imagebox-title">
+      <div class="ib-head"><h2 id="imagebox-title">Insert image</h2></div>
+      <div class="ib-zone">
+        <i data-icon="image"></i>
+        <div class="ib-text">Drop an image here</div>
+        <div class="ib-hint">or</div>
+        <button type="button" id="image-browse" class="primary">Browse…</button>
+      </div>
+      <div class="ib-foot">
+        <span class="hint">Copied into the note's assets folder and linked as <code>![name](./assets/name.png)</code></span>
+        <span class="grow"></span>
+        <button type="button" id="image-cancel">Cancel</button>
+      </div>
+    </dialog>
+    <dialog id="imageview" aria-labelledby="imageview-title">
+      <div class="iv-head">
+        <span id="imageview-title" class="iv-name"></span>
+        <span class="iv-meta"></span>
+        <button type="button" id="imageview-close" aria-label="Close"><i data-icon="x"></i></button>
+      </div>
+      <img class="iv-img" alt="" />
+    </dialog>
+    <dialog id="msgbox" aria-labelledby="msgbox-title">
+      <div class="mb-body">
+        <img class="mb-icon" alt="" />
+        <div class="mb-text">
+          <div class="mb-title" id="msgbox-title"></div>
+          <div class="mb-detail"></div>
+        </div>
+      </div>
+      <div class="mb-buttons"></div>
+    </dialog>
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>

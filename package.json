@@ -1,0 +1,99 @@
+{
+  "name": "tendril",
+  "version": "0.1.0",
+  "description": "Minimalist Markdown editor with a Word-like table of contents",
+  "main": "./out/main/index.js",
+  "author": {
+    "name": "csnakke",
+    "email": "rahuul.naair@gmail.com"
+  },
+  "license": "MIT",
+  "private": true,
+  "scripts": {
+    "dev": "electron-vite dev",
+    "start": "electron-vite preview",
+    "compile": "electron-vite build",
+    "build": "electron-vite build && electron-builder",
+    "build:linux": "electron-vite build && electron-builder --linux",
+    "build:win": "electron-vite build && electron-builder --win",
+    "build:mac": "electron-vite build && electron-builder --mac",
+    "test": "vitest run",
+    "import-theme": "node scripts/import-obsidian-theme.js",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "build": {
+    "appId": "dev.csnakke.tendril",
+    "productName": "Tendril",
+    "directories": {
+      "output": "dist"
+    },
+    "afterAllArtifactBuild": "scripts/appimage-thumbnails.js",
+    "files": [
+      "out/**/*",
+      "package.json",
+      "icons/icon.png"
+    ],
+    "linux": {
+      "target": [
+        "AppImage"
+      ],
+      "category": "Office",
+      "maintainer": "csnakke <rahuul.naair@gmail.com>",
+      "desktop": {
+        "entry": {
+          "Name": "Tendril",
+          "MimeType": "text/markdown;",
+          "StartupWMClass": "tendril"
+        }
+      },
+      "syncDesktopName": true,
+      "executableName": "tendril"
+    },
+    "win": {
+      "target": [
+        "portable"
+      ]
+    },
+    "mac": {
+      "target": [
+        "zip"
+      ],
+      "category": "public.app-category.productivity"
+    },
+    "fileAssociations": [
+      {
+        "ext": "md",
+        "name": "Markdown",
+        "role": "Editor"
+      }
+    ],
+    "artifactName": "Tendril-${version}-${os}-${arch}.${ext}",
+    "icon": "icons/icon.png"
+  },
+  "dependencies": {
+    "@codemirror/lang-markdown": "^6.3.0",
+    "codemirror": "^6.0.2",
+    "dompurify": "^3.4.15",
+    "github-markdown-css": "^5.9.0",
+    "github-slugger": "^2.0.0",
+    "js-yaml": "^4.3.2",
+    "markdown-it": "^15.0.2",
+    "markdown-it-anchor": "^10.0.0",
+    "yauzl": "^2.10.0"
+  },
+  "devDependencies": {
+    "@types/js-yaml": "^4.0.9",
+    "@types/markdown-it": "^14.1.2",
+    "@types/node": "^22.0.0",
+    "@types/yauzl": "^3.4.0",
+    "electron": "^44.4.3",
+    "electron-builder": "^26.15.3",
+    "electron-vite": "^5.0.0",
+    "jsdom": "^30.1.1",
+    "typescript": "^5.6.0",
+    "vite": "^7.0.0",
+    "vitest": "^5.0.1"
+  },
+  "homepage": "https://github.com/csnakke/tendril",
+  "desktopName": "tendril.desktop"
+}

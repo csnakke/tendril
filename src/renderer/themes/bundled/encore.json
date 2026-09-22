@@ -1,0 +1,43 @@
+{
+  "id": "builtin:encore",
+  "name": "Encore",
+  "author": "Carbonateb",
+  "repo": "carbonateb/obsidian-encore-theme",
+  "light": {
+    "bg": "rgb(255, 255, 255)",
+    "fg": "rgb(31, 41, 55)",
+    "barBg": "rgb(243, 244, 246)",
+    "border": "rgb(209, 213, 219)",
+    "muted": "rgb(55, 65, 81)",
+    "hover": "rgba(0, 0, 0, 0.075)",
+    "active": "rgba(80, 61, 143, 0.15)",
+    "inset": "rgb(250, 250, 250)",
+    "selection": "rgba(80, 61, 143, 0.2)",
+    "accent": "rgb(80, 61, 143)",
+    "codeBg": "rgb(250, 250, 250)",
+    "hrColor": "rgba(0, 0, 0, 0.565)",
+    "headingColor": "rgba(31, 41, 55, 0.9)",
+    "linkColor": "rgb(88, 67, 156)",
+    "blockquoteBorder": "rgb(80, 61, 143)",
+    "highlightBg": "rgba(255, 208, 0, 0.4)"
+  },
+  "dark": {
+    "bg": "rgb(15, 15, 15)",
+    "fg": "rgb(245, 245, 245)",
+    "barBg": "rgb(34, 34, 34)",
+    "border": "rgb(45, 45, 45)",
+    "muted": "rgb(200, 200, 200)",
+    "hover": "rgba(255, 255, 255, 0.075)",
+    "active": "rgba(158, 110, 242, 0.15)",
+    "inset": "rgb(27, 27, 27)",
+    "selection": "rgba(158, 110, 242, 0.2)",
+    "accent": "rgb(158, 110, 242)",
+    "codeBg": "rgb(27, 27, 27)",
+    "hrColor": "rgba(255, 255, 255, 0.565)",
+    "headingColor": "rgba(245, 245, 245, 0.9)",
+    "linkColor": "rgb(170, 128, 243)",
+    "blockquoteBorder": "rgb(158, 110, 242)",
+    "highlightBg": "rgba(255, 208, 0, 0.4)"
+  },
+  "licence": "See https://github.com/carbonateb/obsidian-encore-theme (palette only; imported 2026-09-20)"
+}
