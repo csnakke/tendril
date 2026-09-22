@@ -224,6 +224,9 @@ npm run compile        # build main/preload/renderer → out/
 npm run build:linux    # → dist/Tendril-<version>-linux-x86_64.AppImage
 npm run build:win      # → dist/Tendril-<version>-win-x64.exe
 npm run build:mac      # → dist/Tendril-<version>-mac-<arch>.zip
+
+# Default Installation
+npm install && npm run compile && npm run build:linux  # For 64Bit-Linux
 ```
 
 > **Requirements:** Node.js 20.19+ (or 22.12+) and npm.
