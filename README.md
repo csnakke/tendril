@@ -228,20 +228,6 @@ npm run build:mac      # → dist/Tendril-<version>-mac-<arch>.zip
 
 > **Requirements:** Node.js 20.19+ (or 22.12+) and npm.
 
-### 🧰 Why the repository has no `node_modules/` or `out/`
-
-Neither folder is checked in, and neither needs to be — **`npm install` creates both worlds
-back:**
-
-| Folder | Created by | Why it is not in git |
-|---|---|---|
-| `node_modules/` | `npm install` (or `npm ci`, which installs the exact versions in `package-lock.json`) | ~220 MB, and it contains a **platform-specific Electron binary** — a copy from Linux would break a Windows checkout |
-| `out/` | `npm run compile`, and automatically by `npm run dev` / `npm run build:*` | Generated from `src/`; committing it means every source change carries a second, redundant diff |
-| `dist/` | `npm run build:*` | The packaged app (~128 MB). Binaries belong on the **Releases** page, not in history, which can never shrink again |
-
-What *is* committed is the recipe: **`package.json` + `package-lock.json`**. That pair
-reproduces `node_modules` exactly, on any machine, at the same versions.
-
 ### 🩹 Troubleshooting
 
 | Symptom | Cause | Fix |
