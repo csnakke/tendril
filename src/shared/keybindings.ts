@@ -31,6 +31,7 @@ export const KEYBINDINGS: KeyBindingDef[] = [
   { id: 'settings', label: 'Settings…', group: 'File', scope: 'app', default: 'CmdOrCtrl+,' },
   { id: 'insertTable', label: 'Insert Table…', group: 'Edit', scope: 'app', default: 'CmdOrCtrl+Alt+T' },
   { id: 'insertImage', label: 'Insert Image…', group: 'Edit', scope: 'app', default: 'CmdOrCtrl+Alt+I' },
+  { id: 'insertChart', label: 'Insert Chart…', group: 'Edit', scope: 'app', default: 'CmdOrCtrl+Alt+G' },
   { id: 'toc', label: 'Insert / Remove Table of Contents', group: 'Edit', scope: 'app', default: 'CmdOrCtrl+Shift+T' },
   { id: 'cycleView', label: 'Toggle Edit / Reading', group: 'View', scope: 'app', default: 'CmdOrCtrl+E' },
   { id: 'viewEdit', label: 'Edit', group: 'View', scope: 'app', default: 'CmdOrCtrl+1' },

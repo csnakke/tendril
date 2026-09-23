@@ -97,6 +97,7 @@ function menuTemplate(keys: Record<string, string>): MenuItemConstructorOptions[
         { type: 'separator' },
         { label: 'Insert Table…', accelerator: acc('insertTable'), click: () => send('insertTable') },
         { label: 'Insert Image…', accelerator: acc('insertImage'), click: () => send('insertImage') },
+        { label: 'Insert Chart…', accelerator: acc('insertChart'), click: () => send('insertChart') },
         { label: 'Insert / Remove Table of Contents', accelerator: acc('toc'), click: () => send('toc') }
       ]
     },
@@ -416,16 +417,21 @@ handle('image:pick', async () => {
   return r.filePaths
 })
 
-/** Copy an image into the assets folder under a safe, unique name; answer with the note-relative path. */
-handle('image:import', async (_e, o: { docDir: string; assetsDir: string; name: string; srcPath?: string; data?: ArrayBuffer }) => {
+/**
+ * Copy an image into the assets folder under a safe, unique name; answer with
+ * the note-relative path. `overwrite` (a chart's SVG, re-exported) keeps the
+ * same name instead, and is honoured for image files only.
+ */
+handle('image:import', async (_e, o: { docDir: string; assetsDir: string; name: string; srcPath?: string; data?: ArrayBuffer; overwrite?: boolean }) => {
   await fs.mkdir(o.assetsDir, { recursive: true })
   allowAssetsIn(o.assetsDir)
   const ext = extname(o.name).toLowerCase() || '.png'
   const stem = basename(o.name, extname(o.name)).replace(/[^\w.-]+/g, '-').replace(/^-+|-+$/g, '') || 'image'
   let target = join(o.assetsDir, stem + ext)
-  for (let n = 1; await fs.access(target).then(() => true, () => false); n++) target = join(o.assetsDir, `${stem}-${n}${ext}`)
+  const replace = !!o.overwrite && ext in MIME
+  if (!replace) for (let n = 1; await fs.access(target).then(() => true, () => false); n++) target = join(o.assetsDir, `${stem}-${n}${ext}`)
   if (o.srcPath) await fs.copyFile(o.srcPath, target)
-  else if (o.data) await fs.writeFile(target, Buffer.from(o.data))
+  else if (o.data) await (replace ? writeFileAtomic(target, Buffer.from(o.data)) : fs.writeFile(target, Buffer.from(o.data)))
   else throw new Error('Nothing to import')
   let rel = relative(o.docDir, target).split('\\').join('/')
   if (!rel.startsWith('.')) rel = './' + rel

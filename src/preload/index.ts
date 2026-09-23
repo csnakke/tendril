@@ -29,6 +29,7 @@ export type Command =
   | 'confirmClose'
   | 'insertTable'
   | 'insertImage'
+  | 'insertChart'
 
 export interface OpenedFile {
   path: string
@@ -172,7 +173,7 @@ const api = {
   ensureDir: (dir: string): Promise<void> => ipcRenderer.invoke('dir:ensure', dir),
   pickImages: (): Promise<string[]> => ipcRenderer.invoke('image:pick'),
   /** Copy a file (or raw bytes) into the assets folder; the name is de-duplicated. */
-  importImage: (opts: { docDir: string; assetsDir: string; name: string; srcPath?: string; data?: ArrayBuffer }): Promise<ImportedImage> =>
+  importImage: (opts: { docDir: string; assetsDir: string; name: string; srcPath?: string; data?: ArrayBuffer; overwrite?: boolean }): Promise<ImportedImage> =>
     ipcRenderer.invoke('image:import', opts),
   fileDataUrl: (path: string): Promise<string | null> => ipcRenderer.invoke('file:dataUrl', path),
   pathForFile: (file: File): string => webUtils.getPathForFile(file),

@@ -79,3 +79,4 @@ bullet / numbered / task lists, tables, horizontal rules, raw HTML, and:
 | Live preview | Ctrl+Shift+L; the line under the cursor shows raw Markdown |
 | Images | Toolbar **Image** (Ctrl+Alt+I), drag & drop or paste: copied to `./assets/` beside the note and linked as `![name](./assets/name.png)` |
 | Tables | Toolbar **Table** (Ctrl+Alt+T) inserts one from a size grid; right-click inside it for Insert/Delete, Merge and Center, Shading, Font Color, Banded Rows, Wrap Text; Tab moves between cells. Stored as app-managed comments (`<!-- table: banded -->`, `<!--bg:#ffc000-->`) that GitHub ignores |
+| 3D charts | Toolbar **Chart** (Ctrl+Alt+G) opens the chart editor for a 3D bar or 3D pie; double-click a chart to edit it. Stored as a ` ```chart ` block of YAML (`type`, `title`, `palette`, `data` or `categories` + `series`, `options`). *Save as SVG to assets/* optionally adds an image link for viewers without Tendril |

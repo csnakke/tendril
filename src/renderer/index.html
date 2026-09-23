@@ -23,6 +23,7 @@
         <button data-cmd="toc" title="Insert / remove table of contents (Ctrl+Shift+T)"><i data-icon="list"></i>TOC</button>
         <button data-cmd="insertTable" id="insert-table-btn" title="Insert table (Ctrl+Alt+T)"><i data-icon="table"></i>Table</button>
         <button data-cmd="insertImage" title="Insert image (Ctrl+Alt+I)"><i data-icon="image"></i>Image</button>
+        <button data-cmd="insertChart" title="Insert or edit a 3D chart (Ctrl+Alt+G)"><i data-icon="chart"></i>Chart</button>
       </div>
       <span class="sep"></span>
       <div class="group">
@@ -312,6 +313,28 @@
         <span class="hint">Copied into the note's assets folder and linked as <code>![name](./assets/name.png)</code></span>
         <span class="grow"></span>
         <button type="button" id="image-cancel">Cancel</button>
+      </div>
+    </dialog>
+    <dialog id="chartbox" aria-labelledby="chartbox-title">
+      <div class="cb-head">
+        <h2 id="chartbox-title">Insert chart</h2>
+        <div class="segmented" role="tablist" aria-label="Chart type">
+          <button type="button" data-type="bar3d">3D Bar</button>
+          <button type="button" data-type="pie3d">3D Pie</button>
+        </div>
+        <span class="grow"></span>
+        <button type="button" class="cb-close" title="Close (Esc)"><i data-icon="x"></i></button>
+      </div>
+      <div class="cb-body">
+        <div class="cb-form"></div>
+        <div class="cb-preview"><div class="cb-canvas markdown-body"></div></div>
+      </div>
+      <div class="cb-foot">
+        <button type="button" class="cb-svg" title="Also write the chart as an .svg file into the note's assets folder and link it, for viewers without Tendril (GitHub, …)">Save as SVG to assets/</button>
+        <span class="hint">Written into the note as a <code>```chart</code> block you can also edit by hand.</span>
+        <span class="grow"></span>
+        <button type="button" class="cb-cancel">Cancel</button>
+        <button type="button" class="cb-ok primary">Insert</button>
       </div>
     </dialog>
     <dialog id="imageview" aria-labelledby="imageview-title">

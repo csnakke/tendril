@@ -35,6 +35,20 @@
 |---|--------|-------|-----|
 | 1 |        |       |     |
 
+<!-- Sample data: double-click a chart in the preview, or right-click it in the editor, to edit it. -->
+
+```chart
+type: bar3d
+title: Actions by owner
+categories: [Owner 1, Owner 2, Owner 3]
+series:
+  - { name: Open, values: [3, 1, 2], color: "#ed7d31" }
+  - { name: Done, values: [2, 4, 1], color: "#70ad47" }
+options:
+  stacked: true
+  height: 300
+```
+
 ## 6. Next meeting
 
 ## 7. Close

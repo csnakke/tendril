@@ -38,11 +38,41 @@ h2 { border-bottom: 2px solid #2f6fb3; }
 | 1     |             |      |
 | 2     |             |      |
 
+<!-- Sample data: double-click a chart in the preview, or right-click it in the editor, to edit it. -->
+
+```chart
+type: bar3d
+title: Effort by phase
+data:
+  - { label: Discovery, value: 10 }
+  - { label: Build, value: 35 }
+  - { label: Test, value: 15 }
+  - { label: Rollout, value: 8 }
+options:
+  horizontal: true
+  suffix: " d"
+  valueTitle: Person-days
+```
+
 ## Budget
 
 | Item | Cost |
 |------|-----:|
 |      |      |
+
+```chart
+type: pie3d
+title: Budget allocation
+palette: mono
+data:
+  - { label: Staff, value: 60000 }
+  - { label: Licences, value: 15000 }
+  - { label: Hardware, value: 12000 }
+  - { label: Contingency, value: 8000 }
+options:
+  donut: 0.45
+  labels: percent
+```
 
 ## Risks
 

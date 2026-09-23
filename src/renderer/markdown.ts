@@ -7,12 +7,13 @@ import { sanitizeHtml } from './sanitize'
 import { parseFrontMatter, renderProperties, renderTitleBlock, stripFrontMatter, type FrontMatter } from './frontmatter'
 import { isPaged, pagesPlugin } from './pages'
 import { TABLE_CSS, tablesPlugin } from './tables/plugin'
+import { CHART_CSS, chartsPlugin } from './charts/plugin'
 import { PRINT_CSS, pdfFontFamilies, type PdfFont } from './printStyles'
 import { isTocHeading } from './headings'
 import type { StateCore, Token, MarkdownIt as MarkdownItType } from 'markdown-it'
 
 export { escapeHtml }
-export { TABLE_CSS }
+export { TABLE_CSS, CHART_CSS }
 
 /** Per-render options; `resolveImage` maps a local image path to a loadable URL. */
 export type RenderEnv = Env & {
@@ -52,6 +53,7 @@ export const md = new MarkdownIt({ html: true, linkify: true, typographer: false
   })
   .use(pagesPlugin)
   .use(tablesPlugin)
+  .use(chartsPlugin)
   .use(printPlugin)
 
 // Route local image paths through the caller's resolver (preview, PDF, export differ).
@@ -159,6 +161,7 @@ body { margin: 0; background: #fff; }
 ${PROPERTIES_CSS}
 ${PAGES_CSS}
 ${TABLE_CSS}
+${CHART_CSS}
 @media print {
   .markdown-body { max-width: none; padding: 0; }
   a { color: inherit; }
@@ -192,6 +195,7 @@ ${PRINT_CSS}
 ${PROPERTIES_CSS}
 ${PAGES_CSS}
 ${TABLE_CSS}
+${CHART_CSS}
 @media print {
   .markdown-body .page { break-after: page; }
   .markdown-body .page:last-child { break-after: auto; }

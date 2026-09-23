@@ -60,6 +60,19 @@ table { break-inside: avoid; }
 | Item two | ⚠️ | |
 | Item three | ❌ | |
 
+```chart
+type: pie3d
+title: Findings by severity
+palette: severity
+data:
+  - { label: Critical, value: 1 }
+  - { label: High, value: 2 }
+  - { label: Medium, value: 4 }
+  - { label: Low, value: 3 }
+options:
+  explode: [Critical]
+```
+
 ### Detail
 
 1. First finding
@@ -103,6 +116,8 @@ Fenced code blocks keep their formatting and never split awkwardly across pages.
 - `<!-- cover -->` … `<!-- /cover -->` makes the cover page.
 - `<!-- pagebreak -->` starts a new page. Put each marker on its own line at the top level.
 - The `<style>` block at the top is applied only to this document (preview, HTML and PDF).
+- A ` ```chart ` block draws a 3D pie or bar chart. Double-click it in the preview (or press
+  **Ctrl+Alt+G** inside it) to edit the data and style in the chart editor.
 - The preview shows the report as A4 sheets. PDF export adds the title and date in the
   header and *Page n of m* in the footer.
 - **Ctrl+Shift+N** numbers the headings (1, 1.1, 1.1.1); **Ctrl+Shift+T** fills the

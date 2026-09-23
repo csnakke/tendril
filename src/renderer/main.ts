@@ -1,7 +1,7 @@
 import { EditorView, basicSetup } from 'codemirror'
 import { Compartment, EditorState, type Extension } from '@codemirror/state'
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown'
-import { PAGES_CSS, PROPERTIES_CSS, TABLE_CSS, renderBody, renderStandaloneHtml } from './markdown'
+import { CHART_CSS, PAGES_CSS, PROPERTIES_CSS, TABLE_CSS, renderBody, renderStandaloneHtml } from './markdown'
 import { isPaged } from './pages'
 import { parseFrontMatter } from './frontmatter'
 import { hasToc, toggleToc, updateToc } from './toc'
@@ -26,6 +26,8 @@ import { linkPaste } from './linkPaste'
 import { openPromptBar, promptStream } from './promptBar'
 import { IMAGE_FILE, TEXT_FILE } from './paths'
 import { initGraphPane, toggleGraphPane } from './graph/pane'
+import { openChartDialog } from './charts/dialog'
+import { chartAtLine } from './charts/editor'
 
 mountIcons()
 
@@ -201,6 +203,18 @@ previewEl.addEventListener('click', (e) => {
   }
 })
 
+// Double-click a chart in the preview to edit it.
+previewEl.addEventListener('dblclick', (e) => {
+  const fig = (e.target as Element).closest<HTMLElement>('figure.chart[data-line], .chart-error[data-line]')
+  if (!fig) return
+  const block = chartAtLine(view.state, Number(fig.dataset.line))
+  if (!block) return
+  e.preventDefault()
+  if (mode === 'reading') setMode('split')
+  view.dispatch({ selection: { anchor: block.from }, scrollIntoView: true })
+  openChartDialog(view, block.from)
+})
+
 // Proportional scroll sync in split mode.
 let syncing = false
 function syncScroll(from: HTMLElement, to: HTMLElement): void {
@@ -323,6 +337,11 @@ const commands: Record<Command, () => void | Promise<void>> = {
   insertTable: () => {
     if (mode === 'reading') setMode('split')
     openInsertTablePicker(view, $('#insert-table-btn'))
+  },
+  // Edits the chart under the cursor, or inserts a new one there.
+  insertChart: () => {
+    if (mode === 'reading') setMode('split')
+    openChartDialog(view)
   },
   toggleLivePreview: async () => {
     await updateSettings({ livePreview: !settings().livePreview })
@@ -476,7 +495,7 @@ void window.api.canMoveWindow().then((can) => {
 
 // Preview shares the properties/pages CSS with exports so both look alike.
 const sharedCss = document.createElement('style')
-sharedCss.textContent = PROPERTIES_CSS + PAGES_CSS + TABLE_CSS
+sharedCss.textContent = PROPERTIES_CSS + PAGES_CSS + TABLE_CSS + CHART_CSS
 document.head.appendChild(sharedCss)
 
 setMode('split')

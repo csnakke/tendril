@@ -29,6 +29,7 @@ or opening Word. 🛡️
 - [Keyboard shortcuts](#%EF%B8%8F-keyboard-shortcuts)
 - [The linked table of contents](#-the-linked-table-of-contents)
 - [Tables, the Word way](#-tables-the-word-way)
+- [3D charts](#-3d-charts)
 - [Images](#%EF%B8%8F-images)
 - [Explorer](#%EF%B8%8F-explorer)
 - [Tag graph](#%EF%B8%8F-tag-graph)
@@ -90,6 +91,7 @@ Tendril is a deliberate merge of the features people actually use in each tool:
 |---|---|---|
 | 🔗 | **Linked table of contents** | Written into the file between `<!-- toc -->` markers, refreshed on every save, GitHub-compatible anchors |
 | 📊 | **Word-style tables** | Size-picker grid, right-click menu for merge, shading, alignment, banded rows — and it stays a valid GFM table |
+| 📈 | **3D bar & pie charts** | Word-style 3D charts from a ` ```chart ` block of YAML — a visual editor with live preview, every colour and angle adjustable, vector in the PDF |
 | 🖼️ | **Images** | Drop, paste or browse; copied into an `assets/` folder next to the note and linked relatively |
 | 🪟 | **Three views** | Edit, Split and Reading — plus optional in-place live preview while editing |
 | ✏️ | **Multiple cursors** | Sublime-style: `Ctrl+D`, column carets, split selection into lines |
@@ -101,7 +103,7 @@ Tendril is a deliberate merge of the features people actually use in each tool:
 | 🎨 | **Themes & fonts** | Light/Dark/System, Obsidian theme import, Nerd Font download — no OS font install |
 | ⌨️ | **Rebindable shortcuts** | Every shortcut, changed by pressing the new keys |
 | 📋 | **Templates** | Notes and reports, plus your own folder of `.md` templates |
-| 🛡️ | **Pentest-report ready** | Built-in report templates, severity-shaded findings tables, evidence screenshots, one-key PDF |
+| 🛡️ | **Pentest-report ready** | Built-in report templates, severity-shaded findings tables and charts, evidence screenshots, one-key PDF |
 | 🔒 | **Hardened by default** | Sandboxed renderer, sanitized rendering, confined asset access ([details](#-security)) |
 
 ---
@@ -135,7 +137,7 @@ needs, already wired up:
 📃 Page break        the body starts on a fresh page
 📝 Abstract          → your Executive Summary
 🔬 Method            → Scope & Methodology
-📊 Results           → Findings
+📊 Results           → Findings — with a severity 3D pie and a stacked 3D bar
 💬 Discussion        → Risk & Remediation
 📚 References        → CVEs, advisories, tooling
 ```
@@ -161,6 +163,13 @@ valid GFM table that still renders on GitHub:
 🦓 **Banded rows**, merged cells, per-column alignment and wrap control — the Word table
 menu, on a Markdown table. In the PDF the header row repeats on every page, so a findings
 table that runs long is still readable. 📄
+
+### 📈 Findings charts in the report itself
+
+The **Technical Report** template ships with a 3D pie of findings by severity and a stacked
+3D bar of findings by category, both on the **severity palette** — Critical, High, Medium,
+Low and Info get their colours *by name*, the same ones as the table shading above. Change
+the numbers and the charts follow; see [3D charts](#-3d-charts). 🥧
 
 ### 🖼️ Evidence, in place
 
@@ -245,6 +254,7 @@ npm install && npm run compile && npm run build:linux    # For x86_64 bit Linux
 | `curl … install.sh` says Docker is not reachable | Docker not running, or (Linux) you are not in the `docker` group | Start Docker; `sudo usermod -aG docker $USER` and log in again |
 | `sh: 1: electron-vite: not found` | `npm run build`/`compile` before installing | Run **`npm install`** first |
 | `Cannot find module …` | Half-finished or stale install | `rm -rf node_modules && npm ci` |
+| A chart shows *Chart: …* in red | The ` ```chart ` YAML could not be read (bad indentation, unknown `type`, no `data`) | Fix the line it names, or double-click it and let the chart editor rewrite it |
 | Electron aborts with a **SUID sandbox** error on Linux | Dev-machine `chrome-sandbox` permissions | `npx electron --no-sandbox .`, or `sudo chown root:root node_modules/electron/dist/chrome-sandbox && sudo chmod 4755 …` |
 | The AppImage will not start | Missing FUSE | `sudo apt install libfuse2` |
 
@@ -285,6 +295,7 @@ the new keys, `↺` restores the default. On macOS read `Ctrl` as `⌘`.
 | Insert / remove table of contents | `Ctrl+Shift+T` |
 | Insert table (size grid) | `Ctrl+Alt+T` |
 | Insert image | `Ctrl+Alt+I` |
+| Insert chart / edit the one under the cursor | `Ctrl+Alt+G` |
 | Next cell / previous cell (in a table) | `Tab` / `Shift+Tab` |
 
 ### 🖱️ Multiple cursors
@@ -371,6 +382,103 @@ appear as empty ones. ✅
 | 📄 | Header row repeats across pages | Automatic in PDF export |
 | ↩️ | Wrap text | **Wrap Text** toggle (`nowrap` keeps cells on one line) |
 | ⌨️ | `Tab` to the next cell, new row at the end | Same |
+
+---
+
+## 📈 3D charts
+
+**Chart** in the toolbar (`Ctrl+Alt+G`, or right-click → *Insert Chart…*) opens the chart
+editor: a **3D Bar / 3D Pie** switch, a data grid on the left, and the chart exactly as it
+will print on the right, redrawn as you type. **Double-click a chart in the preview** (or
+right-click inside its block → *Edit Chart…*, or press `Ctrl+Alt+G` with the cursor in it)
+to open it again.
+
+| | In the chart editor | |
+|---|---|---|
+| 📋 | **Data grid** | Add, remove and reorder rows (▲ ▼); **+ Series** for grouped or stacked bars; **paste cells from a spreadsheet** (tab- or comma-separated) and the grid fills itself — a first row of names becomes the series names |
+| 🎨 | **Colour swatches** | Click to pick a colour for a slice, bar or series; **right-click to go back to the palette** |
+| 💥 | **Pull out** | Tick it on a pie row to explode that slice |
+| 🎛️ | **Style sections** | *Labels & legend*, *3D*, *Bars & axes*, *Size & text* — every option below, with sliders for the angles |
+| ↩️ | **Reset style options** | Back to the defaults, data untouched |
+| ⌨️ | **`Ctrl+Enter`** | Insert / Update; `Esc` cancels |
+
+Inserting is one undoable change (`Ctrl+Z` takes it back). Switching an existing chart from bar
+to pie keeps its first series.
+
+The chart is written into the note as a fenced block of YAML — readable, diffable, and
+yours to edit by hand:
+
+````markdown
+```chart
+type: pie3d
+title: Findings by severity
+palette: severity
+data:
+  - { label: Critical, value: 1 }
+  - { label: High, value: 3 }
+  - { label: Medium, value: 5 }
+options:
+  explode: [Critical]
+  donut: 0.4
+```
+````
+
+Bars take one series the same way (`data:`), or several — grouped side by side, or
+`stacked: true`:
+
+````markdown
+```chart
+type: bar3d
+title: Findings by category
+categories: [Web, API, Infra]
+series:
+  - { name: High, values: [3, 1, 2], color: "#ed7d31" }
+  - { name: Low, values: [2, 5, 1] }
+options: { stacked: true, valueTitle: Findings }
+```
+````
+
+### 🎛️ Everything is adjustable
+
+| | Option | Applies to | What it does |
+|---|---|---|---|
+| 🎨 | `palette` | both | `default`, `severity`, `mono`, `pastel`, `vivid`, `earth` — or a list of colours; any row or series can set its own `color` |
+| 🏷️ | `labels` | both | `value`, `percent`, `label` (name) or `none`; with `decimals`, `prefix`, `suffix` (`$`, `%`, `h`) |
+| 🗺️ | `legend` | both | `right`, `bottom`, `top` or `none` |
+| 🧊 | `depth`, `gradient`, `edges` | both | Thickness of the extrusion, shaded faces, face outlines |
+| 🔄 | `tilt`, `rotation` | pie | Viewing angle (90° = from above) and where the first slice starts |
+| 💥 | `explode`, `explodeDistance` | pie | Pull slices out by name (`true` for all) |
+| 🍩 | `donut`, `shadow` | pie | Hole size (0–0.8) and the floor shadow |
+| 📐 | `angle`, `gap` | bar | Direction the bars recede in, space between groups |
+| 📚 | `stacked`, `horizontal`, `varyColors` | bar | Stacked or grouped, columns or bars, one colour per bar |
+| 📏 | `min`, `max`, `step`, `grid`, `gridColor` | bar | Value axis range and ticks, back wall and floor |
+| 🔤 | `valueTitle`, `categoryTitle` | bar | Axis titles |
+| 🖋️ | `title`, `caption`, `width`, `height`, `font`, `fontSize`, `textColor`, `titleColor`, `background`, `align` | both | Size and typography |
+
+Options can sit under `options:` or at the top level. Anything left out takes its default,
+anything out of range is clamped, and a block that cannot be read shows an inline error
+instead of breaking the page. Text colours default to `auto`: they follow the theme in the
+preview and print dark on the white page.
+
+### 🖨️ In the preview, HTML and PDF — and optionally as an SVG
+
+Charts are drawn as **static SVG**, not script: they render in the self-contained HTML
+export (whose CSP runs nothing) and land in the **PDF as vector graphics**, never split
+across a page.
+
+GitHub and other viewers show the block as its YAML. If a note has to render elsewhere,
+**Save as SVG to assets/** (in the chart editor, or right-click the block) writes the chart
+to `assets/chart-<title>.svg` and links it right below the block:
+
+```markdown
+<!-- chart-svg -->
+![Findings by severity](./assets/chart-findings-by-severity.svg)
+<!-- /chart-svg -->
+```
+
+Tendril hides that link, since it draws the live chart already; other viewers show the
+image. It is **opt-in** and refreshed only when you press the button again — the YAML stays
+the source. 🔁
 
 ---
 
@@ -546,12 +654,14 @@ sequenceDiagram
   line) — or the report's own **cover page**
 - 🔖 The TOC as a **"Contents" block**, clickable, plus a real **PDF outline**
 - 🏃 A **running header** (title, date) and **"Page n of m"** in the footer
+- 📈 **Charts as vector graphics**, each kept whole on one page and printed in exact colour
 
 **Settings › Export** sets paper size (A4 / Letter), body text face (editor font, sans or
 serif — code always uses the editor font) and whether the header and footer are printed.
 
 **HTML export** keeps the GitHub look, embeds images and fonts, and is a **single
-self-contained file** you can mail to anyone. 📤
+self-contained file** you can mail to anyone — charts included, as inline SVG that needs no
+script. 📤
 
 ---
 
@@ -599,8 +709,17 @@ choose a place — cancel and you are back in the picker, title intact.
 |---|---|
 | Note, Daily, Meeting | **Technical Report**, Academic, Proposal, Minutes |
 
-Every report template ships with a **styled cover page**, `{{date}}` formatting, page breaks
-and tables ready to fill in — **Technical Report** is the one to start a pentest report from
+| Report | Sample charts |
+|---|---|
+| 🛡️ Technical Report | Findings by severity (3D pie, severity palette) · Findings by category (stacked 3D bar) |
+| 📋 Proposal | Budget allocation (3D donut) · Effort by phase (horizontal 3D bar) |
+| 🎓 Academic | Accuracy by dataset (grouped 3D bar) |
+| 🗒️ Minutes | Actions by owner (stacked 3D bar) |
+
+Replace the sample numbers in the chart editor (double-click a chart) or in the YAML.
+
+Every report template ships with a **styled cover page**, `{{date}}` formatting, page breaks,
+tables and **sample 3D charts** ready to fill in — **Technical Report** is the one to start a pentest report from
 ([workflow](#%EF%B8%8F-built-for-pentest-reports)). 🛡️
 
 Placeholders are filled in as the note is created:
@@ -626,8 +745,8 @@ Tendril document can contain:
 | File | Kind | What it demonstrates |
 |---|---|---|
 | [`Notes.md`](templates/Notes.md) | 📝 Note | Front matter of **every property type** (text, number, boolean → checkbox, list → tags, URL → link), every placeholder, and every Markdown feature Tendril renders — formatting, lists, tasks, tables, code, images, quotes |
-| [`Reports.md`](templates/Reports.md) | 📊 Report | A full report skeleton: styled **cover page**, `@page` rules, contents block, page breaks, findings tables, a raw-HTML signature table, checklists and an appendix explaining the markers |
-| [`README.md`](templates/README.md) | 📖 Docs | The template author's reference: placeholders, front matter, layout markers, useful CSS selectors |
+| [`Reports.md`](templates/Reports.md) | 📊 Report | A full report skeleton: styled **cover page**, `@page` rules, contents block, page breaks, findings tables, a **severity 3D pie chart**, a raw-HTML signature table, checklists and an appendix explaining the markers |
+| [`README.md`](templates/README.md) | 📖 Docs | The template author's reference: placeholders, front matter, layout markers, the ` ```chart ` block, useful CSS selectors |
 
 **To use them:** point **Settings › Templates › Templates folder** at this folder (or copy
 the files into your own), and both appear under `Ctrl+Alt+N` — and in the explorer's
@@ -662,7 +781,7 @@ subfolders to force the kind.
 ## 🏗️ Architecture
 
 Electron, TypeScript (strict), CodeMirror 6, markdown-it and three.js (via 3d-force-graph)
-for the tag graph — no UI framework, ~10k lines.
+for the tag graph — no UI framework, ~11k lines.
 
 ```mermaid
 flowchart TB
@@ -696,7 +815,7 @@ flowchart TB
 
 ```mermaid
 flowchart LR
-    A["📄 note.md"] --> B["🔧 markdown-it<br/>GFM + tables + pages"]
+    A["📄 note.md"] --> B["🔧 markdown-it<br/>GFM + tables + pages + charts"]
     B --> C["🧼 Sanitizer<br/>DOMPurify"]
     C --> D["👁️ Preview"]
     C --> E["🌐 HTML export<br/>+ CSP"]
@@ -721,6 +840,7 @@ assumption:
 | 🔐 | The **OpenRouter key never enters the renderer**; it is encrypted at rest with the OS keychain |
 | 📦 | The **font unpacker writes each `.ttf`/`.otf` as `dir/<basename>`** and skips symlink entries, so an archive entry cannot name a path |
 | 🚫 | Debug hooks that run code in the page are **refused in packaged builds** |
+| 📈 | **Charts are SVG built from escaped text and colours checked against `#rrggbb`** — nothing in a chart block can add markup or attributes — and they still pass through the sanitizer |
 | 🎨 | A note's own `<style>` block is kept — CSS runs nothing — and imported themes are stripped to colour variables |
 | 🕸️ | The **graph scans only folders you marked** yourself from the explorer's menu — the window has no channel to mark one — never follows symlinks, and caps file size and count |
 
@@ -755,12 +875,14 @@ src/
 │   ├── sanitize.ts    the sanitizer every rendered note passes through
 │   ├── toc.ts         TOC build / insert / refresh
 │   ├── tables/        model, editor, context menu, size picker
+│   ├── charts/        3D bar/pie model, SVG renderer, markdown-it plugin, chart editor
 │   ├── themes/        builtin palettes, Obsidian import, graph colours
 │   ├── graph/         3D graph view, sidebar pane, zoomed overlay, details card
 │   └── templates/     built-in note and report templates
 └── shared/        ⌨️  shared by both processes: keybindings, front matter, graph model
 
 templates/         📦  starter pack: Notes.md, Reports.md and their reference README
+tests/             🧪  vitest unit tests (charts model, SVG renderer, pipeline, sanitizer)
 icons/             🎨  application icon and the image at the top of this file
 scripts/           🔧  build helpers (AppImage thumbnails, Obsidian theme pre-import)
 install.sh         🐳  one-command installer: builds in a throwaway container (Linux, macOS)
@@ -773,6 +895,12 @@ install.sh         🐳  one-command installer: builds in a throwaway container 
   X11, Windows and macOS get all eight.
 - **Anything a note can express must stay valid Markdown.** If a feature cannot survive a
   round-trip through GitHub's renderer, it does not belong in the file.
+- **Charts are static SVG built in `charts/svg.ts`.** Never use `fill-opacity`,
+  `stroke-opacity` or rgba colours there: Chromium's PDF output leaks that alpha into the
+  next gradient fill, which then prints see-through. Wrap translucent shapes in
+  `<g opacity>` (`faintGroup`); a unit test enforces it.
+- **Tests** live in `tests/` — `charts.test.ts` runs in Node, `charts.sanitize.test.ts` in
+  jsdom to prove chart markup survives DOMPurify.
 
 ---
 

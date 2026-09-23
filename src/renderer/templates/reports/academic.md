@@ -34,6 +34,23 @@
 
 ## 5. Results
 
+<!-- Sample data: double-click a chart in the preview, or right-click it in the editor, to edit it. -->
+
+```chart
+type: bar3d
+title: Accuracy by dataset
+caption: Higher is better.
+categories: [Dataset A, Dataset B, Dataset C]
+series:
+  - { name: Baseline, values: [71.2, 64.5, 80.1] }
+  - { name: Proposed, values: [78.9, 70.3, 84.6] }
+options:
+  suffix: "%"
+  min: 50
+  max: 100
+  valueTitle: Accuracy
+```
+
 ## 6. Conclusion
 
 <!-- pagebreak -->

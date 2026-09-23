@@ -32,6 +32,37 @@
 
 ## Results
 
+<!-- Sample data: double-click a chart in the preview, or right-click it in the editor, to edit it. -->
+
+```chart
+type: pie3d
+title: Findings by severity
+palette: severity
+data:
+  - { label: Critical, value: 1 }
+  - { label: High, value: 3 }
+  - { label: Medium, value: 5 }
+  - { label: Low, value: 4 }
+  - { label: Info, value: 2 }
+options:
+  explode: [Critical]
+```
+
+```chart
+type: bar3d
+title: Findings by category
+palette: severity
+categories: [Authentication, Configuration, Injection, Exposure]
+series:
+  - { name: Critical, values: [1, 0, 0, 0] }
+  - { name: High, values: [1, 1, 1, 0] }
+  - { name: Medium, values: [1, 2, 0, 2] }
+  - { name: Low, values: [0, 2, 1, 1] }
+options:
+  stacked: true
+  valueTitle: Findings
+```
+
 ## Discussion
 
 ## Conclusion

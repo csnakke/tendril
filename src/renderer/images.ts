@@ -137,6 +137,24 @@ async function insertImagesUnguarded(sources: Source[], at?: number): Promise<vo
   view.focus()
 }
 
+/**
+ * Write a generated file (a chart's SVG) into the note's assets folder, saving
+ * the note first when it has no folder yet. `overwrite` keeps one file per
+ * chart instead of numbering a new copy on every export. Answers the
+ * note-relative link, or null when the user backed out.
+ */
+export async function saveAsset(name: string, data: ArrayBuffer, overwrite: boolean): Promise<string | null> {
+  if (!host.docPath()) {
+    const ok = await confirmBox('Save the note first', 'The file is written into an assets folder next to the note.', { ok: 'Save…' })
+    if (!ok || !(await host.save())) return null
+  }
+  const docDir = dirOf(host.docPath()!)
+  const assetsDir = await assetsDirFor(docDir)
+  if (!assetsDir) return null
+  const r = await window.api.importImage({ docDir, assetsDir, name, data, overwrite })
+  return r.rel
+}
+
 export async function insertImageFiles(paths: string[], at?: number): Promise<void> {
   await insertImages(paths.filter((p) => IMAGE_FILE.test(p)).map((p) => ({ name: p.split(/[\\/]/).pop()!, srcPath: p })), at)
 }

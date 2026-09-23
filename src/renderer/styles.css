@@ -1166,6 +1166,101 @@ html[data-graph-pane="closed"] :is(#graph-pane, #graph-split) { display: none; }
 #imagebox code { font-family: var(--editor-font); font-size: .95em; white-space: nowrap; }
 #imagebox .grow { flex: 1; }
 
+/* ---- Chart dialog ---- */
+#chartbox {
+  width: min(1180px, 96vw);
+  height: min(760px, 92vh);
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--ui-font);
+  font-size: var(--ui-size);
+  display: none;
+  flex-direction: column;
+}
+#chartbox[open] { display: flex; }
+#chartbox::backdrop { background: rgba(0, 0, 0, 0.45); }
+#chartbox .cb-head, #chartbox .cb-foot { display: flex; align-items: center; gap: 12px; padding: 12px 18px; flex: none; }
+#chartbox .cb-head { border-bottom: 1px solid var(--border); }
+#chartbox .cb-foot { border-top: 1px solid var(--border); }
+#chartbox h2 { margin: 0 8px 0 0; font-size: 16px; }
+#chartbox .grow { flex: 1; }
+#chartbox .hint { color: var(--muted); font-size: calc(var(--ui-size) - 1px); }
+#chartbox code { font-family: var(--editor-font); font-size: .95em; }
+#chartbox .segmented { display: inline-flex; padding: 2px; gap: 2px; border-radius: 7px; background: var(--inset); }
+#chartbox .segmented button { font: inherit; padding: 3px 14px; border: none; border-radius: 5px; background: transparent; color: var(--fg); cursor: pointer; }
+#chartbox .segmented button.active { background: var(--bg); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12), 0 0 0 1px var(--border); color: var(--accent); font-weight: 600; }
+#chartbox .cb-close { display: inline-flex; padding: 5px; border: none; border-radius: 6px; background: transparent; color: var(--muted); cursor: pointer; }
+#chartbox .cb-close:hover { background: var(--hover); color: var(--fg); }
+#chartbox .cb-foot > button {
+  font: inherit;
+  padding: 5px 14px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--fg);
+  cursor: pointer;
+  white-space: nowrap;
+}
+#chartbox .cb-foot > button:hover { background: var(--hover); }
+#chartbox .cb-foot > button.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+#chartbox .cb-body { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(360px, 440px) 1fr; }
+#chartbox .cb-form { overflow: auto; padding: 4px 16px 16px; border-right: 1px solid var(--border); background: var(--bar-bg); }
+#chartbox .cb-preview { overflow: auto; display: flex; align-items: center; justify-content: center; padding: 20px; background: var(--bg); }
+#chartbox .cb-canvas { width: 100%; background: transparent; font-family: var(--preview-font); }
+#chartbox .cb-section { padding: 10px 0 12px; border-bottom: 1px solid var(--border); display: flex; flex-direction: column; gap: 7px; }
+#chartbox .cb-section:last-child { border-bottom: none; }
+#chartbox .cb-section h3 { margin: 2px 0 2px; font-size: calc(var(--ui-size) - 1.5px); font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+#chartbox .cb-field { display: grid; grid-template-columns: 110px 1fr; align-items: center; gap: 10px; }
+#chartbox .cb-trio .cb-field, #chartbox .cb-colors .cb-field { grid-template-columns: auto 1fr; gap: 6px; }
+#chartbox .cb-trio, #chartbox .cb-colors { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+#chartbox .cb-label { color: var(--muted); }
+#chartbox input[type="text"], #chartbox input[type="number"], #chartbox select {
+  font: inherit;
+  min-width: 0;
+  width: 100%;
+  padding: 4px 7px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: var(--bg);
+  color: var(--fg);
+}
+#chartbox input:focus-visible, #chartbox select:focus-visible { outline: 2px solid var(--accent); outline-offset: -1px; }
+#chartbox input.bad { border-color: #e5534b; }
+#chartbox .cb-range { display: flex; align-items: center; gap: 8px; }
+#chartbox .cb-range input { flex: 1; accent-color: var(--accent); }
+#chartbox .cb-range output { width: 48px; text-align: right; color: var(--muted); font-variant-numeric: tabular-nums; }
+#chartbox .cb-checks { display: flex; flex-wrap: wrap; gap: 6px 16px; }
+#chartbox .cb-check { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
+#chartbox input[type="checkbox"] { accent-color: var(--accent); }
+#chartbox .cb-swatch-wrap { position: relative; display: inline-flex; }
+#chartbox .cb-swatch { width: 26px; height: 20px; padding: 0; border: 1px solid var(--border); border-radius: 4px; cursor: pointer; }
+#chartbox .cb-swatch.auto { background-image: linear-gradient(135deg, transparent 45%, var(--muted) 45%, var(--muted) 55%, transparent 55%) !important; }
+#chartbox .cb-color-input { position: absolute; left: 0; top: 100%; width: 0; height: 0; padding: 0; border: 0; opacity: 0; pointer-events: none; }
+#chartbox .cb-grid-wrap { overflow-x: auto; }
+#chartbox .cb-grid { width: 100%; border-collapse: collapse; }
+#chartbox .cb-grid th { font-weight: 500; color: var(--muted); text-align: left; padding: 0 3px 4px; white-space: nowrap; }
+#chartbox .cb-grid td { padding: 2px 3px; }
+#chartbox .cb-grid .cb-series { min-width: 64px; }
+#chartbox .cb-grid .cb-series input { width: 64px; margin-right: 4px; }
+#chartbox .cb-grid .cb-num { text-align: right; width: 64px; min-width: 52px; }
+#chartbox .cb-grid td:nth-child(2) { width: 60%; }
+#chartbox .cb-grid td:nth-child(2) input { min-width: 104px; }
+#chartbox .cb-grid .cb-center { text-align: center; }
+#chartbox .cb-move { width: 1%; white-space: nowrap; }
+#chartbox .cb-move button, #chartbox .cb-x { font-size: 10px; line-height: 1; padding: 3px 4px; border: none; border-radius: 4px; background: transparent; color: var(--muted); cursor: pointer; }
+#chartbox .cb-x { font-size: 15px; padding: 0 5px; }
+#chartbox .cb-move button:hover:not(:disabled), #chartbox .cb-x:hover:not(:disabled) { background: var(--hover); color: var(--fg); }
+#chartbox .cb-move button:disabled, #chartbox .cb-x:disabled { opacity: .3; cursor: default; }
+#chartbox .cb-grid-tools { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+#chartbox .cb-grid-tools button { font: inherit; padding: 3px 10px; border: 1px solid var(--border); border-radius: 5px; background: var(--bg); color: var(--fg); cursor: pointer; }
+#chartbox .cb-grid-tools button:hover { background: var(--hover); }
+#chartbox .cb-notice { padding: 7px 10px; border-left: 3px solid #d29922; background: color-mix(in srgb, #d29922 12%, transparent); border-radius: 4px; line-height: 1.4; }
+#chartbox .cb-link { align-self: flex-start; font: inherit; padding: 0; border: none; background: none; color: var(--accent); cursor: pointer; text-decoration: underline; }
+#preview figure.chart, #preview .chart-error { cursor: pointer; }
+
 /* ---- Image viewer ---- */
 #imageview {
   max-width: 94vw;

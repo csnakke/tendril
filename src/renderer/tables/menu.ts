@@ -3,6 +3,8 @@ import { deleteTable, insertTable, tableCapabilities, tableCommands, tableContex
 import type { Align } from './model'
 import { tablePicker } from './picker'
 import { openImageDialog } from '../images'
+import { chartAt } from '../charts/editor'
+import { openChartDialog, saveChartSvgAt } from '../charts/dialog'
 
 /**
  * Word-style right-click menu for the editor: Cut/Copy/Paste everywhere,
@@ -264,11 +266,20 @@ export function installTableMenu(view: EditorView, promptMe: () => void): void {
     const sel = view.state.selection.main
     if (pos < sel.from || pos > sel.to) view.dispatch({ selection: { anchor: pos } })
     const ctx = tableContext(view.state)
+    const chart = chartAt(view.state, pos)
     const picture: Item = { label: 'Insert Picture…', run: openImageDialog }
     const prompt: Item = { label: 'Prompt Me…', run: promptMe }
+    const insertChart: Item = { label: 'Insert Chart…', run: () => openChartDialog(view) }
     const items = ctx
       ? [...clipboardItems(view), { sep: true }, prompt, { sep: true }, picture, { sep: true }, ...tableItems(view, ctx)]
-      : [...clipboardItems(view), { sep: true }, prompt, { sep: true }, insertTableItem(view), picture]
+      : chart
+        ? [
+            ...clipboardItems(view),
+            { sep: true },
+            { label: 'Edit Chart…', run: () => openChartDialog(view, chart.from) },
+            { label: 'Save Chart as SVG to assets/', run: () => void saveChartSvgAt(view, chart.from) }
+          ]
+        : [...clipboardItems(view), { sep: true }, prompt, { sep: true }, insertTableItem(view), picture, insertChart]
     showPopup(build(items, close), e.clientX, e.clientY)
   })
   view.scrollDOM.addEventListener('scroll', close)
