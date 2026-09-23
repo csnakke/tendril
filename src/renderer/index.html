@@ -51,6 +51,7 @@
         <div id="sidebar-head">
           <img class="sb-logo" alt="" />
           <span class="sb-title">Tendril</span>
+          <label id="graph-switch" data-cmd="toggleGraphPane" title="Graph pane (Ctrl+Shift+G)"><i data-icon="graph"></i><input type="checkbox" aria-label="Show graph pane" /><span class="track"></span></label>
           <button id="sidebar-collapse" title="Collapse sidebar (Ctrl+B)"><i data-icon="chevrons-left"></i></button>
         </div>
         <label id="sidebar-search" class="sb-row"><i data-icon="search"></i><input type="search" placeholder="Search notes" autocomplete="off" spellcheck="false" /></label>
@@ -61,6 +62,12 @@
           <span id="root-path"></span>
         </div>
         <div id="tree" role="tree"></div>
+        <div id="graph-split" aria-hidden="true"></div>
+        <section id="graph-pane" aria-label="Tag graph" data-state="empty">
+          <div class="gp-head"><i data-icon="graph"></i><span class="gp-title">Graph</span><span class="gp-count"></span></div>
+          <div class="gp-canvas" title="Click to zoom"></div>
+          <div class="gp-empty"></div>
+        </section>
         <div id="sidebar-foot"><button id="sidebar-trash" title="Open the system Trash"><i data-icon="trash"></i><span>Trash</span></button></div>
       </aside>
       <div id="sidebar-split" aria-hidden="true"></div>
@@ -74,6 +81,19 @@
     <div id="resize-handles" aria-hidden="true">
       <div data-edge="n"></div><div data-edge="s"></div><div data-edge="e"></div><div data-edge="w"></div>
       <div data-edge="ne"></div><div data-edge="nw"></div><div data-edge="se"></div><div data-edge="sw"></div>
+    </div>
+    <div id="graph-overlay" hidden>
+      <div class="go-stage" role="dialog" aria-label="Tag graph">
+        <header class="go-head">
+          <i data-icon="graph"></i><span class="go-title"></span><span class="go-count"></span>
+          <span class="go-hint">Drag to rotate · right-drag to pan · scroll to zoom · Esc to close</span>
+          <button class="go-close" title="Close (Esc)"><i data-icon="x"></i></button>
+        </header>
+        <div class="go-body">
+          <div class="go-canvas"></div>
+          <aside class="go-card" hidden></aside>
+        </div>
+      </div>
     </div>
     <dialog id="settings">
       <div class="st-head">

@@ -15,7 +15,6 @@ or opening Word. 🛡️
 [![Platform](https://img.shields.io/badge/platform-Linux%20%7C%20Windows%20%7C%20macOS-lightgrey.svg)](#%EF%B8%8F-installation)
 [![Electron](https://img.shields.io/badge/Electron-44-47848F.svg?logo=electron&logoColor=white)](https://www.electronjs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178C6.svg?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
-[![Tests](https://img.shields.io/badge/tests-94%20passing-success.svg)](#-development)
 
 </div>
 
@@ -32,6 +31,7 @@ or opening Word. 🛡️
 - [Tables, the Word way](#-tables-the-word-way)
 - [Images](#%EF%B8%8F-images)
 - [Explorer](#%EF%B8%8F-explorer)
+- [Tag graph](#%EF%B8%8F-tag-graph)
 - [Prompt Me — optional AI](#-prompt-me--optional-ai)
 - [PDF & HTML export](#%EF%B8%8F-pdf--html-export)
 - [Appearance](#-appearance)
@@ -78,6 +78,7 @@ Tendril is a deliberate merge of the features people actually use in each tool:
 | Cover page and title block from document properties | Fast file explorer with search |
 | Running header / footer and "Page n of m" in the PDF | Community themes — import any Obsidian theme's palette |
 | Print-quality export you can hand to a client | Paste a screenshot straight into the note |
+| Save As — you decide where every new document goes | Graph view — every note linked to its tags, in 3D |
 
 ...and nothing from either that locks the file. ✅
 
@@ -92,7 +93,8 @@ Tendril is a deliberate merge of the features people actually use in each tool:
 | 🖼️ | **Images** | Drop, paste or browse; copied into an `assets/` folder next to the note and linked relatively |
 | 🪟 | **Three views** | Edit, Split and Reading — plus optional in-place live preview while editing |
 | ✏️ | **Multiple cursors** | Sublime-style: `Ctrl+D`, column carets, split selection into lines |
-| 🗂️ | **File explorer** | AppFlowy-style sidebar with search, templates, trash and reveal-in-file-manager |
+| 🗂️ | **File explorer** | AppFlowy-style sidebar that follows the open file — search, templates, trash, reveal-in-file-manager |
+| 🕸️ | **3D tag graph** | Obsidian-style graph of a folder's notes and their tags — glowing, revolving, coloured by your theme |
 | 🤖 | **Prompt Me (optional AI)** | Inline prompt bar backed by a local LLM or OpenRouter — **off by default** |
 | 🖨️ | **Real PDF export** | Print stylesheet, repeated table headers, running header/footer, document outline |
 | 🌐 | **HTML export** | Self-contained single file, GitHub look, fonts embedded |
@@ -181,30 +183,36 @@ answer scope allows. 🔒 See [Prompt Me](#-prompt-me--optional-ai).
 
 ## ⬇️ Installation
 
-Builds are **single files — no installer, no admin rights.** Grab one from the
-[Releases page](https://github.com/csnakke/tendril/releases).
-
-### 🐧 Linux — `.AppImage`
+### 🐧🍎 Linux & macOS — one command
 
 ```bash
-# Needs libfuse2 on modern distros (Ubuntu 22.04+, Fedora, …)
-sudo apt install libfuse2t64          # Debian / Ubuntu - 64Bit
-chmod +x Tendril-0.1.0-linux-x86_64.AppImage
-./Tendril-0.1.0-linux-x86_64.AppImage
+curl -fsSL https://raw.githubusercontent.com/csnakke/tendril/main/install.sh | bash
 ```
 
-On first launch the app registers its own desktop entry and file-manager thumbnails under
-`~/.local/share`, so it shows up in your launcher with a proper icon. 🎯
+No binaries are downloaded and nothing is installed on your system except the app itself.
+The script ([`install.sh`](install.sh)) builds Tendril from source **inside a throwaway Docker
+container**, hands you the result, and cleans up after itself:
 
-### 🪟 Windows — portable `.exe`
+```mermaid
+flowchart LR
+    A["🐳 Pull node:22 image"] --> B["📥 git clone"]
+    B --> C["📦 npm install<br/>npm run compile<br/>npm run build:&lt;os&gt;"]
+    C --> D["📤 Copy the app out"]
+    D --> E["🧹 Remove container<br/>+ image"]
+    style C fill:#2f81f7,stroke:#1f6feb,color:#fff
+```
 
-Download `Tendril-0.1.0-win-x64.exe` and double-click it. Nothing is installed; delete the
-file to remove the app. SmartScreen may warn on an unsigned binary — *More info → Run anyway*.
+| | Result | Start it |
+|---|---|---|
+| 🐧 Linux | `~/Applications/Tendril.AppImage` | `~/Applications/Tendril.AppImage` |
+| 🍎 macOS | `~/Applications/Tendril.app` (ad-hoc signed for your Mac) | `open ~/Applications/Tendril.app` |
 
-### 🍎 macOS — `.zip`
-
-Unzip and drag `Tendril.app` to Applications. The build is **unsigned**, so the first launch
-needs **right-click → Open** (double-clicking shows "unidentified developer").
+- 🧩 **Needs:** Docker (Docker Desktop, OrbStack or Colima on macOS). The OS and CPU (x64 / arm64) are detected automatically.
+- 🧹 The Node image is removed afterwards — unless it was already on your machine, then it is left alone.
+- ⚙️ **Options:** `TENDRIL_INSTALL_DIR` (where the app goes), `TENDRIL_REF` (branch or tag), `TENDRIL_REPO`, `TENDRIL_NODE_IMAGE` — e.g.
+  `curl -fsSL …/install.sh | TENDRIL_REF=v0.2.0 bash`
+- 🐧 The AppImage needs FUSE 2 to start: `sudo apt install libfuse2t64` (the installer warns if it is missing).
+- 🔄 **Update:** run the same command again. **Uninstall:** delete the app.
 
 ### 🔨 Build from source
 
@@ -225,16 +233,16 @@ npm run build:linux    # → dist/Tendril-<version>-linux-x86_64.AppImage
 npm run build:win      # → dist/Tendril-<version>-win-x64.exe
 npm run build:mac      # → dist/Tendril-<version>-mac-<arch>.zip
 
-# Default Installation
-npm install && npm run compile && npm run build:linux  # For 64Bit-Linux
+# Default Installation Method:
+npm install && npm run compile && npm run build:linux    # For x86_64 bit Linux
 ```
 
 > **Requirements:** Node.js 20.19+ (or 22.12+) and npm.
-
 ### 🩹 Troubleshooting
 
 | Symptom | Cause | Fix |
 |---|---|---|
+| `curl … install.sh` says Docker is not reachable | Docker not running, or (Linux) you are not in the `docker` group | Start Docker; `sudo usermod -aG docker $USER` and log in again |
 | `sh: 1: electron-vite: not found` | `npm run build`/`compile` before installing | Run **`npm install`** first |
 | `Cannot find module …` | Half-finished or stale install | `rm -rf node_modules && npm ci` |
 | Electron aborts with a **SUID sandbox** error on Linux | Dev-machine `chrome-sandbox` permissions | `npx electron --no-sandbox .`, or `sudo chown root:root node_modules/electron/dist/chrome-sandbox && sudo chmod 4755 …` |
@@ -267,6 +275,7 @@ the new keys, `↺` restores the default. On macOS read `Ctrl` as `⌘`.
 | Toggle Edit / Reading | `Ctrl+E` |
 | Edit / Split / Reading | `Ctrl+1` / `Ctrl+2` / `Ctrl+3` |
 | Toggle sidebar | `Ctrl+B` |
+| Toggle graph pane | `Ctrl+Shift+G` |
 | Live preview in Edit view | `Ctrl+Shift+E` |
 
 ### ✏️ Editing
@@ -393,16 +402,96 @@ flowchart LR
 
 The sidebar (`Ctrl+B`) is an AppFlowy-style file tree:
 
+- 🧭 **Follows the editor** — open a file (from the tree, *Open…*, the command line or the
+  graph), save it somewhere new, or create one from a template, and the tree switches to
+  that file's folder with the file highlighted. An untitled note leaves the tree where it is.
 - 🔍 **Search box** filters the tree by file name
-- 📝 **New note** creates a note from a template in the current folder
+- 📝 **New note** creates a note from a template, then asks where to save it (starting in the current folder)
 - 📌 The **folder name heads the tree** — click to fold; its `⌄` menu goes to the parent, Home,
   any folder, or refreshes
 - 🎯 Open files show the theme's highlight
-- 🖱️ **Right-click** a file or folder for *Reveal in File Manager* and *Move to Trash*
+- 🖱️ **Right-click** a file or folder for *Reveal in File Manager* and *Move to Trash*; a
+  folder also offers *Enable Graph Here* / *Disable Graph* ([Tag graph](#%EF%B8%8F-tag-graph))
+- 🕸️ **Graph folders** are marked with a coloured bar, tint and graph icon in the theme's colour
 - 🗑️ The **Trash** button at the bottom opens the system trash
 
 > ⚠️ *Move to Trash* uses the real OS trash and the tree lists dotfiles too — mind the
 > `.git` folder when you are browsing a repository.
+
+---
+
+## 🕸️ Tag graph
+
+An Obsidian-style **3D graph of your notes, built from their tags**. Every note with
+`tags` in its front matter is a node; it links to each of its tags, and a nested tag
+(`web/xss`) links to its parent (`web`) — so notes cluster by topic on their own.
+
+```markdown
+---
+title: Stored XSS in comments
+tags: [web/xss, finding, high]
+---
+```
+
+### 📁 One graph per folder — and only where you ask for it
+
+The explorer can browse the whole disk, so a graph is **opt-in**: right-click a folder ›
+**Enable Graph Here**. That writes a small marker, `<folder>/.tendril/graph.json`, and only
+a folder carrying it is ever scanned — nothing else the explorer can see ends up in a graph.
+**Disable Graph** removes the marker.
+
+```json
+{ "version": 1, "recursive": false, "exclude": [] }
+```
+
+| Key | Default | Meaning |
+|---|---|---|
+| `recursive` | `false` | Include notes in subfolders too |
+| `exclude` | `[]` | Folder or file names (or paths relative to the graph folder) to leave out |
+
+- 📄 Only `.md` / `.markdown` files with front-matter `tags` are included — a list
+  (`[a, b]`) or a comma-separated string. Tags are lower-cased, a leading `#` is dropped.
+- 🚫 Dot-folders, the images folder (`assets/`), `node_modules` and symlinks are skipped;
+  files over 2 MB are ignored and a scan stops at 2,000 notes.
+- ♻️ The graph **updates live** when a note in the folder changes.
+
+### 🪟 The graph pane
+
+The sidebar is split: **explorer on top, graph below**, with a drag handle between them.
+The **switch at the top of the sidebar** (or `Ctrl+Shift+G`) shows or hides the pane.
+
+- 👆 The pane stays empty until you **click a graph folder** in the explorer; then that
+  folder's graph appears and **revolves on its own**.
+- ⏸️ It stops drawing whenever it can't be seen — pane or sidebar hidden, window in the
+  background, or the zoomed view open.
+
+### 🔍 The zoomed view
+
+**Click the pane** and the graph zooms into a large view over the dimmed window. It does
+not revolve here — **drag to rotate, right-drag to pan, scroll to zoom**; `Esc` closes it.
+
+| Click | What happens |
+|---|---|
+| 🟢 **A note** | The note **opens in the editor behind the dim**; the camera flies to it, its neighbours light up and a card lists its tags |
+| ⭕ **A tag** | The camera flies to it and lights up its notes and related tags |
+| ➖ **A link** | Only highlights that link and its two ends — nothing opens, nothing moves |
+| ⬛ **Empty space** | Clears the highlight |
+
+Entries in the card act like clicking that node.
+
+### 🎨 Colours follow your theme
+
+Notes are **glowing orbs**, tags are **bright rings**, and each cluster — a top-level tag —
+takes one of the theme's graph colours (a note uses its **first** tag, so put the main one
+first). Change the theme and the graph recolours at once.
+
+| Theme | Where the graph colours come from |
+|---|---|
+| Built-in (Catppuccin, Nord, Rosé Pine, Dracula, One Dark, default) | Each palette's official accent colours |
+| Imported Obsidian theme | Its own `--color-blue`, `--color-orange`, `--color-green`, … and graph variables (`--graph-node`, `--graph-node-tag`, `--graph-line`, `--graph-node-focused`) |
+| Anything else | Derived from the theme's accent and syntax colours |
+
+The explorer's graph-folder marker uses the theme's graph colour too.
 
 ---
 
@@ -494,12 +583,17 @@ HTML exports (~2–3 MB per face), so they look identical anywhere. 📦
 Tendril reads the Obsidian community theme catalogue and extracts a palette from any theme's
 `theme.css`. Only the CSS custom properties on `:root` / `body` / `.theme-light` /
 `.theme-dark` are used — every other rule targets Obsidian's own DOM and is discarded.
+That includes the theme's named colours and graph variables, so the
+[tag graph](#%EF%B8%8F-tag-graph) looks the way the theme draws it in Obsidian.
 
 ---
 
 ## 📋 Templates
 
-`Ctrl+Alt+N` (or **New from Template…**) opens the picker, with a live preview:
+`Ctrl+Alt+N` (or **New from Template…**) opens the picker, with a live preview. Pick a
+template, type a title and press **Create**: a **Save dialog asks where to put the file**,
+starting in the explorer's folder with `<title>.md` filled in. Nothing is written until you
+choose a place — cancel and you are back in the picker, title intact.
 
 | 📝 Notes | 📊 Reports |
 |---|---|
@@ -513,7 +607,7 @@ Placeholders are filled in as the note is created:
 
 | Placeholder                           | Becomes                                                                      |
 | ------------------------------------- | ---------------------------------------------------------------------------- |
-| `{{title}}`                           | The title typed in the picker (also the file name)                           |
+| `{{title}}`                           | The title typed in the picker (also the suggested file name)                 |
 | `{{author}}`                          | **Settings › Templates › Author**                                            |
 | `{{date}}` · `{{time}}`               | `2026-09-22` · `21:15`                                                       |
 | `{{date:FORMAT}}` · `{{time:FORMAT}}` | Any format, e.g. `{{date:dddd, D MMMM YYYY}}` → *Tuesday, 21 September 2026* |
@@ -567,7 +661,8 @@ subfolders to force the kind.
 
 ## 🏗️ Architecture
 
-Electron, TypeScript (strict), CodeMirror 6 and markdown-it — no UI framework, ~9k lines.
+Electron, TypeScript (strict), CodeMirror 6, markdown-it and three.js (via 3d-force-graph)
+for the tag graph — no UI framework, ~10k lines.
 
 ```mermaid
 flowchart TB
@@ -579,6 +674,7 @@ flowchart TB
         M4["🅰️ Fonts · 🌈 Themes"]
         M5["🧠 LLM client"]
         M6["🖨️ PDF printer"]
+        M7["🕸️ Graph scanner<br/>marked folders only"]
     end
     subgraph P ["🌉 Preload — contextBridge"]
         P1["window.api<br/>typed IPC surface"]
@@ -588,6 +684,7 @@ flowchart TB
         R1["✏️ CodeMirror 6<br/>editor"]
         R2["📄 markdown-it<br/>+ sanitizer"]
         R3["📊 Tables · 🖼️ Images<br/>🗂️ Sidebar · ⚙️ Settings"]
+        R4["🕸️ 3D graph<br/>WebGL"]
     end
     R <-->|"IPC, sender-checked"| P
     P <-->|"ipcRenderer"| M
@@ -625,6 +722,7 @@ assumption:
 | 📦 | The **font unpacker writes each `.ttf`/`.otf` as `dir/<basename>`** and skips symlink entries, so an archive entry cannot name a path |
 | 🚫 | Debug hooks that run code in the page are **refused in packaged builds** |
 | 🎨 | A note's own `<style>` block is kept — CSS runs nothing — and imported themes are stripped to colour variables |
+| 🕸️ | The **graph scans only folders you marked** yourself from the explorer's menu — the window has no channel to mark one — never follows symlinks, and caps file size and count |
 
 Found something? Please open an issue. 🐛
 
@@ -635,7 +733,7 @@ Found something? Please open an issue. 🐛
 ```bash
 npm install
 npm run dev          # hot-reloading app
-npm test             # 94 unit tests (vitest)
+npm test             # unit tests (vitest, tests/**/*.test.ts)
 npm run typecheck    # tsc --noEmit, strict
 npm run compile      # build main/preload/renderer into out/
 npm run build:linux  # | build:win | build:mac → dist/
@@ -649,6 +747,7 @@ src/
 │   ├── index.ts       window, menu, IPC, asset:// scheme, AppImage integration
 │   ├── fsx.ts         atomic writes
 │   ├── settings.ts    settings.json + keychain-encrypted key
+│   ├── graph.ts       tag-graph scanner, folder marker, watcher
 │   └── llm.ts         OpenAI-compatible streaming client
 ├── preload/       🌉  contextBridge — the typed window.api surface
 ├── renderer/      🖼️  the whole UI
@@ -656,14 +755,15 @@ src/
 │   ├── sanitize.ts    the sanitizer every rendered note passes through
 │   ├── toc.ts         TOC build / insert / refresh
 │   ├── tables/        model, editor, context menu, size picker
-│   ├── themes/        builtin palettes, Obsidian import
+│   ├── themes/        builtin palettes, Obsidian import, graph colours
+│   ├── graph/         3D graph view, sidebar pane, zoomed overlay, details card
 │   └── templates/     built-in note and report templates
-├── shared/        ⌨️  keybinding definitions shared by both processes
-└── tests/         ✅  pure-logic unit tests
+└── shared/        ⌨️  shared by both processes: keybindings, front matter, graph model
 
 templates/         📦  starter pack: Notes.md, Reports.md and their reference README
 icons/             🎨  application icon and the image at the top of this file
 scripts/           🔧  build helpers (AppImage thumbnails, Obsidian theme pre-import)
+install.sh         🐳  one-command installer: builds in a throwaway container (Linux, macOS)
 ```
 
 ### 🧭 Notes for contributors

@@ -5,15 +5,18 @@ import { isPaged } from './pages'
 import { CURSOR, expandPlaceholders, slugFileName, takeCursor } from './placeholders'
 import { BUILTIN_TEMPLATES } from './templates/index'
 import { icon } from './icons/index'
-import { confirmBox } from './messageBox'
 
-/** File > New from Template: pick a note/report template, name it, create it. */
+/**
+ * File > New from Template: pick a note/report template, name it, then choose
+ * where to save it. The save dialog starts in the explorer's folder with
+ * `<title>.md` filled in; nothing is written until the user confirms a place.
+ */
 
 export interface NewDocument {
   content: string
   cursor: number
-  /** Absolute path when the picker was asked to create the file in a folder. */
-  path: string | null
+  /** Where the user saved the new file. */
+  path: string
 }
 
 const dialog = document.getElementById('templates') as HTMLDialogElement
@@ -35,7 +38,7 @@ export async function pickTemplate(targetFolder: string | null): Promise<NewDocu
   templates = [...BUILTIN_TEMPLATES, ...(await window.api.listUserTemplates().catch(() => []))]
   titleEl.value = ''
   const name = folder?.split(/[\\/]/).filter(Boolean).pop()
-  folderEl.textContent = folder ? `Saves as <title>.md in ${name}` : 'Opens as a new unsaved document'
+  folderEl.textContent = name ? `You choose where to save it (starting in ${name})` : 'You choose where to save it'
   folderEl.title = folder ?? ''
   setKind(kind)
   dialog.showModal()
@@ -94,13 +97,10 @@ async function create(): Promise<void> {
   if (!selected) return
   const ctx = context()
   const { text, cursor } = takeCursor(expandPlaceholders(selected.content, ctx))
-  let path: string | null = null
-  if (folder) {
-    path = `${folder.replace(/[\\/]$/, '')}/${ctx.filename}.md`
-    if (await window.api.fileExists(path)) {
-      if (!(await confirmBox(`${ctx.filename}.md already exists`, 'Overwrite the file in this folder?', { ok: 'Overwrite', danger: true }))) return
-    }
-  }
+  const suggested = folder ? `${folder.replace(/[\\/]$/, '')}/${ctx.filename}.md` : `${ctx.filename}.md`
+  // The native dialog confirms overwriting; cancelling keeps the picker open with the title intact.
+  const path = await window.api.saveFile(null, text, suggested)
+  if (!path) return
   close({ content: text, cursor, path })
 }
 

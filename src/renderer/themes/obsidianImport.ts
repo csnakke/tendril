@@ -112,6 +112,7 @@ const OBSIDIAN_BASE = `#obsidian-probe{
   --text-selection:hsla(var(--accent-h),var(--accent-s),var(--accent-l),0.2);--text-highlight-bg:rgba(255,208,0,0.4);
   --code-background:var(--background-primary-alt);--hr-color:var(--background-modifier-border);
   --link-color:var(--text-accent);--blockquote-border-color:var(--interactive-accent);
+  --graph-line:var(--color-base-35);--graph-node:var(--text-muted);--graph-node-tag:var(--color-green);--graph-node-focused:var(--text-accent);
 }
 #obsidian-probe.theme-dark{
   --color-base-00:#1e1e1e;--color-base-10:#242424;--color-base-20:#262626;--color-base-25:#2a2a2a;--color-base-30:#363636;
@@ -119,7 +120,7 @@ const OBSIDIAN_BASE = `#obsidian-probe{
   --background-modifier-hover:rgba(255,255,255,0.075);
 }`
 
-const MAP: Record<keyof Omit<ThemePalette, 'syntax'>, string[]> = {
+const MAP: Record<keyof Omit<ThemePalette, 'syntax' | 'graphColors'>, string[]> = {
   bg: ['--background-primary'],
   barBg: ['--background-secondary'],
   border: ['--background-modifier-border'],
@@ -137,9 +138,18 @@ const MAP: Record<keyof Omit<ThemePalette, 'syntax'>, string[]> = {
   blockquoteBorder: ['--blockquote-border-color'],
   highlightBg: ['--text-highlight-bg'],
   fontText: ['--font-text'],
-  fontMono: ['--font-monospace']
+  fontMono: ['--font-monospace'],
+  // Obsidian's own graph view variables, so the graph looks the way the theme draws it there.
+  graphNote: ['--graph-node'],
+  graphTag: ['--graph-node-tag'],
+  graphLink: ['--graph-line'],
+  graphHighlight: ['--graph-node-focused', '--interactive-accent'],
+  graphBg: ['--background-primary'],
+  graphFolder: ['--graph-node-tag', '--color-accent-2', '--interactive-accent']
 }
 const FONT_KEYS = new Set(['fontText', 'fontMono'])
+/** Obsidian's named colours, the theme's own accent set: the graph's cluster colours. */
+const SERIES = ['--color-blue', '--color-orange', '--color-green', '--color-purple', '--color-yellow', '--color-cyan', '--color-red', '--color-pink']
 
 /** Resolve one mode's palette by letting Chromium evaluate the variable chains. */
 function resolveMode(paletteCss: string, mode: 'light' | 'dark'): ThemePalette | undefined {
@@ -163,6 +173,7 @@ function resolveMode(paletteCss: string, mode: 'light' | 'dark'): ThemePalette |
       }
     }
     if (!out.bg || !out.fg) return undefined
+    const series = SERIES.map((v) => readColor(probe, v)).filter((c): c is string => !!c)
     return {
       bg: out.bg,
       fg: out.fg,
@@ -174,7 +185,9 @@ function resolveMode(paletteCss: string, mode: 'light' | 'dark'): ThemePalette |
       inset: out.inset ?? out.barBg ?? out.bg,
       selection: out.selection ?? mix(out.accent ?? out.fg, out.bg, 0.25),
       accent: out.accent ?? out.fg,
-      ...pick(out, ['codeBg', 'hrColor', 'headingColor', 'linkColor', 'blockquoteBorder', 'highlightBg', 'fontText', 'fontMono'])
+      ...pick(out, ['codeBg', 'hrColor', 'headingColor', 'linkColor', 'blockquoteBorder', 'highlightBg', 'fontText', 'fontMono',
+        'graphNote', 'graphTag', 'graphLink', 'graphHighlight', 'graphBg', 'graphFolder']),
+      ...(series.length ? { graphColors: series } : {})
     }
   } finally {
     probe.remove()

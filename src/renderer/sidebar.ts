@@ -12,6 +12,8 @@ import { showMenu } from './tables/menu'
  * menu travels: parent, home, any folder, refresh; double-click a folder to
  * descend). Expanded folders are watched so the tree tracks disk changes.
  * The footer opens the system Trash; right-click › Move to Trash uses it too.
+ * Graph folders (holding a `.tendril/graph.json` marker) are highlighted, and
+ * clicking one shows its tag graph in the pane below (graph/pane.ts).
  */
 
 const $ = <T extends HTMLElement>(sel: string): T => document.querySelector(sel) as T
@@ -27,6 +29,9 @@ let activePath: string | null = null
 let filter = ''
 const expanded = new Set<string>()
 const cache = new Map<string, DirEntry[]>()
+/** Folders known to carry the graph marker, and the one whose graph is showing. */
+const graphDirs = new Set<string>()
+let activeGraph: string | null = null
 let openFile: (path: string) => Promise<void> = async () => {}
 
 // ---- Data ---------------------------------------------------------------------
@@ -35,6 +40,8 @@ async function load(dir: string): Promise<boolean> {
   try {
     const listing = await window.api.listDir(dir)
     cache.set(dir, listing.entries)
+    markGraph(dir, listing.graph)
+    for (const e of listing.entries) if (e.isDir) markGraph(e.path, !!e.graph)
     window.api.watchDir(dir)
     return true
   } catch {
@@ -59,7 +66,14 @@ export async function setRoot(dir: string): Promise<void> {
   const old = root
   root = dir
   // Drop everything that isn't inside the new root; keep the new root's own state.
-  for (const d of [...expanded]) if (d !== dir && !d.startsWith(dir + '/') && !d.startsWith(dir + '\\')) forget(d)
+  // One folder at a time, not forget(): that also clears a folder's subfolders,
+  // and the new root may be one of them (re-rooting into an expanded folder).
+  for (const d of [...expanded]) {
+    if (d === dir || d.startsWith(dir + '/') || d.startsWith(dir + '\\')) continue
+    expanded.delete(d)
+    cache.delete(d)
+    window.api.unwatchDir(d)
+  }
   if (old && old !== dir && !expanded.has(old)) {
     cache.delete(old)
     window.api.unwatchDir(old)
@@ -87,6 +101,28 @@ window.api.onDirChanged(async (dir) => {
   render()
 })
 
+// ---- Graph folders -------------------------------------------------------------
+
+function markGraph(dir: string, on: boolean): void {
+  if (on) graphDirs.add(dir)
+  else graphDirs.delete(dir)
+}
+
+/** Show a graph folder's graph in the pane below (null clears the pane). */
+function selectGraph(dir: string | null): void {
+  activeGraph = dir
+  document.dispatchEvent(new CustomEvent('graph-folder-selected', { detail: dir }))
+  render()
+}
+
+// Marked or unmarked from the context menu: highlight it, and show (or drop) its graph.
+window.api.onGraphMarker((dir, enabled) => {
+  markGraph(dir, enabled)
+  if (enabled) selectGraph(dir)
+  else if (dir === activeGraph) selectGraph(null)
+  else render()
+})
+
 // ---- Rendering ----------------------------------------------------------------
 
 document.addEventListener('iconset-changed', () => render())
@@ -96,6 +132,9 @@ function render(): void {
   rootNameEl.textContent = root.split(/[\\/]/).filter(Boolean).pop() ?? root
   rootPathEl.textContent = root
   rootPathEl.title = root
+  const rootBtn = $('#root-name')
+  rootBtn.classList.toggle('graph-folder', graphDirs.has(root))
+  rootBtn.classList.toggle('graph-active', root === activeGraph)
   treeEl.replaceChildren(list(root, 0))
 }
 
@@ -128,7 +167,12 @@ function list(dir: string, depth: number): HTMLUListElement {
     if (e.isDir) {
       const open = expanded.has(e.path)
       li.setAttribute('aria-expanded', String(open))
-      row.innerHTML = `<span class="chevron">${icon('chevron-right')}</span>${icon(open ? 'folder-open' : 'folder')}<span class="name"></span>`
+      const graph = graphDirs.has(e.path)
+      row.innerHTML = `<span class="chevron">${icon('chevron-right')}</span>${icon(open ? 'folder-open' : 'folder')}<span class="name"></span>${graph ? `<span class="graph-badge" title="Graph folder">${icon('graph')}</span>` : ''}`
+      if (graph) {
+        row.classList.add('graph-folder')
+        row.classList.toggle('graph-active', e.path === activeGraph)
+      }
     } else {
       if (e.path === activePath) row.classList.add('active')
       row.draggable = true // drag into the editor: images become ![name](path)
@@ -147,8 +191,10 @@ treeEl.addEventListener('click', (e) => {
   const row = (e.target as HTMLElement).closest<HTMLElement>('.row')
   const li = row?.parentElement
   if (!row || !li?.dataset.path) return
-  if (li.dataset.kind === 'dir') void toggle(li.dataset.path)
-  else {
+  if (li.dataset.kind === 'dir') {
+    if (graphDirs.has(li.dataset.path)) selectGraph(li.dataset.path)
+    void toggle(li.dataset.path)
+  } else {
     setPeek(false)
     void openFile(li.dataset.path)
   }
@@ -186,8 +232,13 @@ window.api.onTrashRequest(async (path) => {
   }
 })
 
+/** Folder holding `path`; a file at a filesystem root gives that root (`/`, `C:\`). */
 function parentOf(path: string): string {
-  return path.slice(0, Math.max(path.lastIndexOf('/'), path.lastIndexOf('\\'))) || path
+  const i = Math.max(path.lastIndexOf('/'), path.lastIndexOf('\\'))
+  if (i < 0) return path
+  const dir = path.slice(0, i)
+  if (dir === '') return path[0] // "/note.md" → "/"
+  return /^[A-Za-z]:$/.test(dir) ? dir + path[i] : dir // "C:\note.md" → "C:\"
 }
 
 /** Folder new files should go to: the sidebar root. */
@@ -227,6 +278,7 @@ rootMenuBtn.addEventListener('click', () => {
 // The folder name folds the whole tree away, like a section header.
 $('#root-name').addEventListener('click', () => {
   sidebarEl.dataset.folded = String(sidebarEl.dataset.folded !== 'true')
+  if (root && graphDirs.has(root)) selectGraph(root)
 })
 
 searchEl.addEventListener('input', () => {
@@ -296,11 +348,16 @@ splitEl.addEventListener('pointerdown', (e) => {
 
 // ---- Public -------------------------------------------------------------------
 
-/** Keep the active file highlighted; adopt its folder as root if none is set yet. */
+/**
+ * The explorer follows the editor: whenever a file is opened (or saved under a
+ * new name), the tree shows that file's folder with the file highlighted. An
+ * untitled document leaves the tree where it is.
+ */
 export function sidebarFileOpened(path: string | null): void {
   activePath = path
-  if (path && !root) {
-    void setRoot(path.slice(0, Math.max(path.lastIndexOf('/'), path.lastIndexOf('\\'))) || path)
+  const dir = path ? parentOf(path) : null
+  if (dir && dir !== root) {
+    void setRoot(dir)
     return
   }
   render()

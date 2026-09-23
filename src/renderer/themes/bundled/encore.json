@@ -19,7 +19,23 @@
     "headingColor": "rgba(31, 41, 55, 0.9)",
     "linkColor": "rgb(88, 67, 156)",
     "blockquoteBorder": "rgb(80, 61, 143)",
-    "highlightBg": "rgba(255, 208, 0, 0.4)"
+    "highlightBg": "rgba(255, 208, 0, 0.4)",
+    "graphNote": "rgb(55, 65, 81)",
+    "graphTag": "rgb(8, 185, 78)",
+    "graphLink": "rgb(156, 163, 175)",
+    "graphHighlight": "rgb(80, 61, 143)",
+    "graphBg": "rgb(255, 255, 255)",
+    "graphFolder": "rgb(8, 185, 78)",
+    "graphColors": [
+      "rgb(8, 109, 221)",
+      "rgb(236, 117, 0)",
+      "rgb(8, 185, 78)",
+      "rgb(120, 82, 238)",
+      "rgb(224, 172, 0)",
+      "rgb(0, 191, 188)",
+      "rgb(233, 49, 71)",
+      "rgb(213, 57, 132)"
+    ]
   },
   "dark": {
     "bg": "rgb(15, 15, 15)",
@@ -37,7 +53,23 @@
     "headingColor": "rgba(245, 245, 245, 0.9)",
     "linkColor": "rgb(170, 128, 243)",
     "blockquoteBorder": "rgb(158, 110, 242)",
-    "highlightBg": "rgba(255, 208, 0, 0.4)"
+    "highlightBg": "rgba(255, 208, 0, 0.4)",
+    "graphNote": "rgb(200, 200, 200)",
+    "graphTag": "rgb(8, 185, 78)",
+    "graphLink": "rgb(75, 75, 75)",
+    "graphHighlight": "rgb(158, 110, 242)",
+    "graphBg": "rgb(15, 15, 15)",
+    "graphFolder": "rgb(8, 185, 78)",
+    "graphColors": [
+      "rgb(8, 109, 221)",
+      "rgb(236, 117, 0)",
+      "rgb(8, 185, 78)",
+      "rgb(120, 82, 238)",
+      "rgb(224, 172, 0)",
+      "rgb(0, 191, 188)",
+      "rgb(233, 49, 71)",
+      "rgb(213, 57, 132)"
+    ]
   },
-  "licence": "See https://github.com/carbonateb/obsidian-encore-theme (palette only; imported 2026-09-20)"
+  "licence": "See https://github.com/carbonateb/obsidian-encore-theme (palette only; imported 2026-09-23)"
 }

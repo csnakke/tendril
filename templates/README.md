@@ -19,7 +19,7 @@ Expanded once, when the document is created.
 
 | Placeholder | Result |
 |-------------|--------|
-| `{{title}}` | Title typed in the picker (also used for the file name) |
+| `{{title}}` | Title typed in the picker (also the suggested file name) |
 | `{{author}}` | Settings → Templates → Author |
 | `{{date}}` | Today as `YYYY-MM-DD` |
 | `{{date:FORMAT}}` | Today in a custom format, e.g. `{{date:dddd, D MMMM YYYY}}` → *Sunday, 20 September 2026* |

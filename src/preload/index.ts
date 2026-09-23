@@ -4,6 +4,8 @@ import type { ObsidianTheme, ThemeDef } from '../main/themes'
 export type { ObsidianTheme, ThemeDef, ThemePalette } from '../main/themes'
 export type { Template, TemplateKind } from '../main/templates'
 export type { Keybindings } from '../shared/keybindings'
+export type { GraphData, GraphLink, GraphNode } from '../shared/graph'
+import type { GraphData } from '../shared/graph'
 import type { Template } from '../main/templates'
 
 export type Command =
@@ -21,6 +23,7 @@ export type Command =
   | 'cycleView'
   | 'settings'
   | 'toggleSidebar'
+  | 'toggleGraphPane'
   | 'toggleLivePreview'
   | 'newFromTemplate'
   | 'confirmClose'
@@ -52,6 +55,8 @@ export interface Settings {
   sidebarOpen: boolean
   sidebarWidth: number
   sidebarRoot: string | null
+  graphPaneOpen: boolean
+  graphPaneHeight: number
   themeId: string
   iconSet: 'lucide' | 'tabler' | 'phosphor'
   livePreview: boolean
@@ -76,10 +81,13 @@ export interface DirEntry {
   name: string
   path: string
   isDir: boolean
+  /** Folders only: holds a graph marker. */
+  graph?: boolean
 }
 export interface DirListing {
   path: string
   parent: string | null
+  graph: boolean
   entries: DirEntry[]
 }
 export interface NerdFont {
@@ -124,8 +132,9 @@ const api = {
   uninstallTheme: (id: string): Promise<void> => ipcRenderer.invoke('themes:uninstall', id),
   openFile: (): Promise<OpenedFile | null> => ipcRenderer.invoke('file:open'),
   readFile: (path: string): Promise<OpenedFile | null> => ipcRenderer.invoke('file:read', path),
-  saveFile: (path: string | null, content: string): Promise<string | null> =>
-    ipcRenderer.invoke('file:save', path, content),
+  /** Write `content` to `path`; with no path, ask where (starting at `suggested`). Null when cancelled. */
+  saveFile: (path: string | null, content: string, suggested?: string): Promise<string | null> =>
+    ipcRenderer.invoke('file:save', path, content, suggested),
   exportHtml: (html: string, suggestedName: string): Promise<string | null> =>
     ipcRenderer.invoke('export:html', html, suggestedName),
   exportPdf: (html: string, suggestedName: string, opts: PdfOptions): Promise<string | null> =>
@@ -174,6 +183,17 @@ const api = {
   unwatchDir: (dir: string): void => ipcRenderer.send('dir:unwatch', dir),
   onDirChanged: (cb: (dir: string) => void): void => {
     ipcRenderer.on('dir:changed', (_e, dir: string) => cb(dir))
+  },
+  /** The tag graph of a folder carrying the graph marker; rejects for any other folder. */
+  buildGraph: (dir: string): Promise<GraphData> => ipcRenderer.invoke('graph:build', dir),
+  isGraphFolder: (dir: string): Promise<boolean> => ipcRenderer.invoke('graph:isEnabled', dir),
+  /** A graph folder's notes changed on disk; rebuild to redraw. */
+  onGraphChanged: (cb: (dir: string) => void): void => {
+    ipcRenderer.on('graph:changed', (_e, dir: string) => cb(dir))
+  },
+  /** A folder was marked or unmarked from the explorer's context menu. */
+  onGraphMarker: (cb: (dir: string, enabled: boolean) => void): void => {
+    ipcRenderer.on('graph:marker', (_e, dir: string, enabled: boolean) => cb(dir, enabled))
   },
   setDirty: (dirty: boolean): void => ipcRenderer.send('state:dirty', dirty),
   setTitle: (title: string): void => ipcRenderer.send('state:title', title),

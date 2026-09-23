@@ -20,6 +20,9 @@ export interface Settings {
   sidebarWidth: number
   /** Last folder shown in the sidebar; null = folder of the first opened file, else home. */
   sidebarRoot: string | null
+  /** Tag graph pane under the explorer: shown, and its height in pixels. */
+  graphPaneOpen: boolean
+  graphPaneHeight: number
   /** ThemeDef id: 'builtin:<slug>' or 'obsidian:<owner>/<repo>'. */
   themeId: string
   iconSet: 'lucide' | 'tabler' | 'phosphor'
@@ -73,6 +76,8 @@ export const DEFAULT_SETTINGS: Settings = {
   sidebarOpen: true,
   sidebarWidth: 240,
   sidebarRoot: null,
+  graphPaneOpen: true,
+  graphPaneHeight: 260,
   themeId: 'builtin:catppuccin',
   iconSet: 'lucide',
   livePreview: true,

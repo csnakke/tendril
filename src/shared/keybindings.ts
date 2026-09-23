@@ -37,6 +37,7 @@ export const KEYBINDINGS: KeyBindingDef[] = [
   { id: 'viewSplit', label: 'Split', group: 'View', scope: 'app', default: 'CmdOrCtrl+2' },
   { id: 'viewReading', label: 'Reading', group: 'View', scope: 'app', default: 'CmdOrCtrl+3' },
   { id: 'toggleSidebar', label: 'Toggle Sidebar', group: 'View', scope: 'app', default: 'CmdOrCtrl+B' },
+  { id: 'toggleGraphPane', label: 'Toggle Graph Pane', group: 'View', scope: 'app', default: 'CmdOrCtrl+Shift+G' },
   { id: 'toggleLivePreview', label: 'Live Preview in Edit View', group: 'View', scope: 'app', default: 'CmdOrCtrl+Shift+E' },
   { id: 'selectNextOccurrence', label: 'Add the next occurrence of the selection', group: 'Multiple cursors', scope: 'editor', default: 'CmdOrCtrl+D' },
   { id: 'splitSelectionIntoLines', label: 'Split selection into lines (single line: select all matches)', group: 'Multiple cursors', scope: 'editor', default: 'CmdOrCtrl+Shift+L' },

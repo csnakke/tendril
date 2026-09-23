@@ -1,17 +1,22 @@
 import { watch, type FSWatcher } from 'node:fs'
 import { promises as fs } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
+import { isGraphFolder } from './graph'
 
 export interface DirEntry {
   name: string
   path: string
   isDir: boolean
+  /** Folders only: holds a graph marker (see graph.ts). */
+  graph?: boolean
 }
 
 export interface DirListing {
   path: string
   /** null at a filesystem root. */
   parent: string | null
+  /** The listed folder itself is a graph folder. */
+  graph: boolean
   entries: DirEntry[]
 }
 
@@ -24,12 +29,12 @@ export async function listDir(dir: string): Promise<DirListing> {
       const path = join(dir, d.name)
       let isDir = d.isDirectory()
       if (d.isSymbolicLink()) isDir = await fs.stat(path).then((s) => s.isDirectory(), () => false)
-      return { name: d.name, path, isDir }
+      return isDir ? { name: d.name, path, isDir, graph: await isGraphFolder(path) } : { name: d.name, path, isDir }
     })
   )
   entries.sort((a, b) => Number(b.isDir) - Number(a.isDir) || a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }))
   const parent = dirname(dir)
-  return { path: dir, parent: parent === dir ? null : parent, entries }
+  return { path: dir, parent: parent === dir ? null : parent, graph: await isGraphFolder(dir), entries }
 }
 
 // ---- Change notification -----------------------------------------------------

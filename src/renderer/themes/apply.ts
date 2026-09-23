@@ -4,17 +4,22 @@ import { HighlightStyle, syntaxHighlighting } from '@codemirror/language'
 import { tags as t } from '@lezer/highlight'
 import type { ThemePalette } from '../../preload/index'
 import { mix } from './obsidianImport'
+import { MAX_SERIES, graphPalette } from './graph'
 
 /** Stylesheet defaults (GitHub-like); used when a theme lacks the active mode. */
 export const FALLBACK: Record<'light' | 'dark', ThemePalette> = {
   light: {
     bg: '#ffffff', barBg: '#f6f8fa', border: '#d0d7de', fg: '#1f2328', muted: '#57606a',
     hover: '#eaeef2', active: '#dfe4ea', inset: '#e7ebef', selection: '#ddf4ff', accent: '#0969da',
+    graphNote: '#0969da', graphTag: '#1a7f37', graphLink: '#d0d7de', graphHighlight: '#bf8700', graphBg: '#ffffff', graphFolder: '#1a7f37',
+    graphColors: ['#0969da', '#bc4c00', '#1a7f37', '#8250df', '#9a6700', '#1b7c83', '#cf222e', '#bf3989'],
     syntax: { heading: '#cf222e', emphasis: '#953800', link: '#0969da', code: '#116329', quote: '#57606a', meta: '#6e7781', keyword: '#cf222e', string: '#0a3069', comment: '#6e7781' }
   },
   dark: {
     bg: '#0d1117', barBg: '#161b22', border: '#30363d', fg: '#e6edf3', muted: '#8b949e',
     hover: '#21262d', active: '#2a3038', inset: '#0d1117', selection: '#1c2d45', accent: '#2f81f7',
+    graphNote: '#58a6ff', graphTag: '#3fb950', graphLink: '#30363d', graphHighlight: '#d29922', graphBg: '#0d1117', graphFolder: '#3fb950',
+    graphColors: ['#58a6ff', '#f0883e', '#3fb950', '#bc8cff', '#d29922', '#39c5cf', '#ff7b72', '#f778ba'],
     syntax: { heading: '#ff7b72', emphasis: '#ffa657', link: '#79c0ff', code: '#7ee787', quote: '#8b949e', meta: '#8b949e', keyword: '#ff7b72', string: '#a5d6ff', comment: '#8b949e' }
   }
 }
@@ -29,6 +34,17 @@ export function applyChrome(p: ThemePalette): void {
   const root = document.documentElement.style
   for (const [key, token] of TOKENS) root.setProperty(token, p[key] as string)
   root.setProperty('--highlight', p.highlightBg ?? p.selection)
+  const g = graphPalette(p)
+  root.setProperty('--graph-note', g.note)
+  root.setProperty('--graph-tag', g.tag)
+  root.setProperty('--graph-link', g.link)
+  root.setProperty('--graph-highlight', g.highlight)
+  root.setProperty('--graph-bg', g.bg)
+  root.setProperty('--graph-folder', g.folder)
+  for (let i = 0; i < MAX_SERIES; i++) {
+    if (i < g.series.length) root.setProperty(`--graph-c${i}`, g.series[i])
+    else root.removeProperty(`--graph-c${i}`)
+  }
 }
 
 /** Overrides layered on github-markdown-css so the preview follows the palette. */

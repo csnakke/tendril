@@ -14,6 +14,7 @@ import { defaultTemplatesDir, ensureTemplatesDir, listUserTemplates } from './te
 import { resolveBindings, type Keybindings } from '../shared/keybindings'
 import { complete as llmComplete, test as llmTest } from './llm'
 import { writeFileAtomic } from './fsx'
+import { buildGraph, disableGraph, enableGraph, forgetGraph, isGraphFolder, unwatchGraph } from './graph'
 
 type Command = string
 
@@ -109,6 +110,7 @@ function menuTemplate(keys: Record<string, string>): MenuItemConstructorOptions[
         { label: 'Reading', accelerator: acc('viewReading'), click: () => send('viewReading') },
         { type: 'separator' },
         { label: 'Toggle Sidebar', accelerator: acc('toggleSidebar'), click: () => send('toggleSidebar') },
+        { label: 'Toggle Graph Pane', accelerator: acc('toggleGraphPane'), click: () => send('toggleGraphPane') },
         { label: 'Live Preview in Edit View', accelerator: acc('toggleLivePreview'), click: () => send('toggleLivePreview') },
         { type: 'separator' },
         // Reload throws the unsaved document away; it is a development aid only.
@@ -173,6 +175,7 @@ function createWindow(): void {
   win.on('closed', () => {
     win = null
     unwatchAll()
+    unwatchGraph()
   })
   const notifyState = (): void => win?.webContents.send('window:state', isZoomed())
   win.on('maximize', notifyState)
@@ -275,10 +278,15 @@ handle('file:read', async (_e, path: string) => {
   }
 })
 
-handle('file:save', async (_e, path: string | null, content: string) => {
+handle('file:save', async (_e, path: string | null, content: string, suggested?: string) => {
   let target = path
   if (!target) {
-    const r = await dialog.showSaveDialog(win!, { defaultPath: 'untitled.md', filters: MD_FILTERS })
+    // `suggested` pre-fills folder and name (new from template); the user still decides.
+    const r = await dialog.showSaveDialog(win!, {
+      defaultPath: suggested || 'untitled.md',
+      filters: MD_FILTERS,
+      properties: ['showOverwriteConfirmation', 'createDirectory']
+    })
     if (r.canceled || !r.filePath) return null
     target = r.filePath
   }
@@ -356,15 +364,37 @@ handle('shell:openTrash', () => {
   if (process.platform === 'darwin') return shell.openPath(join(homedir(), '.Trash')).then(() => undefined)
   return shell.openExternal('trash:///')
 })
-on('explorer:contextMenu', (e, path: string, isDir: boolean, folder: string, isRoot: boolean) => {
+on('explorer:contextMenu', async (e, path: string, isDir: boolean, folder: string, isRoot: boolean) => {
+  // Marking a folder happens here, in the main process, on the user's click:
+  // the renderer has no channel that could turn an arbitrary folder into a graph.
+  const graph = isDir && (await isGraphFolder(path))
+  const setGraph = (on: boolean): void => {
+    void (on ? enableGraph(path) : disableGraph(path)).then(
+      () => {
+        forgetGraph(path)
+        e.sender.send('graph:marker', path, on)
+      },
+      (err: Error) => dialog.showMessageBox(win!, { type: 'error', message: on ? 'Could not enable the graph' : 'Could not disable the graph', detail: err.message })
+    )
+  }
   const menu = Menu.buildFromTemplate([
     { label: 'New from Template Here…', click: () => e.sender.send('template:new', folder) },
+    ...(isDir ? [{ label: graph ? 'Disable Graph' : 'Enable Graph Here', click: () => setGraph(!graph) }] : []),
     { type: 'separator' },
     { label: isDir ? 'Reveal Folder in File Manager' : 'Reveal in File Manager', click: () => shell.showItemInFolder(path) },
     ...(isRoot ? [] : [{ type: 'separator' as const }, { label: 'Move to Trash', click: () => e.sender.send('explorer:trash', path) }])
   ])
   menu.popup({ window: win! })
 })
+
+// ---- Tag graph -----------------------------------------------------------------
+
+/** Only a folder carrying the marker is scanned; anything else is refused in graph.ts. */
+handle('graph:build', async (e, dir: string) => {
+  const { assetsFolder } = await loadSettings()
+  return buildGraph(dir, { assetsFolder, onChange: (d) => !e.sender.isDestroyed() && e.sender.send('graph:changed', d) })
+})
+handle('graph:isEnabled', (_e, dir: string) => isGraphFolder(dir))
 
 // ---- Templates ---------------------------------------------------------------
 

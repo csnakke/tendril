@@ -25,6 +25,15 @@ export interface ThemePalette {
   highlightBg?: string
   fontText?: string
   fontMono?: string
+  /** Tag graph: note nodes, tag nodes, links, focus colour, canvas, and the explorer's graph-folder marker. */
+  graphNote?: string
+  graphTag?: string
+  graphLink?: string
+  graphHighlight?: string
+  graphBg?: string
+  graphFolder?: string
+  /** Tag graph cluster colours: notes and tags are coloured by their top-level tag, in this order. */
+  graphColors?: string[]
   /** Editor syntax colours; derived from the palette when absent. */
   syntax?: Partial<Record<'heading' | 'emphasis' | 'link' | 'code' | 'quote' | 'meta' | 'keyword' | 'string' | 'comment', string>>
 }

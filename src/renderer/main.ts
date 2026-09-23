@@ -25,6 +25,7 @@ import { openImageViewer } from './imageViewer'
 import { linkPaste } from './linkPaste'
 import { openPromptBar, promptStream } from './promptBar'
 import { IMAGE_FILE, TEXT_FILE } from './paths'
+import { initGraphPane, toggleGraphPane } from './graph/pane'
 
 mountIcons()
 
@@ -148,13 +149,7 @@ async function newFromTemplate(folder: string | null): Promise<void> {
   if (!(await confirmDiscard())) return
   const doc = await pickTemplate(folder)
   if (!doc) return
-  if (doc.path) {
-    const saved = await window.api.saveFile(doc.path, doc.content)
-    if (!saved) return
-    loadDocument(doc.content, saved)
-  } else {
-    loadDocument(doc.content, null)
-  }
+  loadDocument(doc.content, doc.path) // already saved where the user chose
   view.dispatch({ selection: { anchor: doc.cursor }, scrollIntoView: true })
   if (mode === 'reading') setMode('split')
   view.focus()
@@ -319,6 +314,7 @@ const commands: Record<Command, () => void | Promise<void>> = {
   cycleView: () => setMode(mode === 'reading' ? 'edit' : 'reading'),
   settings: () => openSettings(),
   toggleSidebar: () => toggleSidebar(),
+  toggleGraphPane: () => toggleGraphPane(),
   newFromTemplate: () => newFromTemplate(currentRoot()),
   insertImage: () => {
     if (mode === 'reading') setMode('split')
@@ -490,6 +486,8 @@ void initAppearance(view).then(() => {
   appearanceReady = true
   syncLivePreview()
   syncKeybindings()
+  // Notes clicked in the graph open behind it, like any other open.
+  initGraphPane((p) => void run(() => openPath(p), 'Could not open the file'))
   return initSidebar((p) => run(() => openPath(p), 'Could not open the file'))
 })
 view.focus()

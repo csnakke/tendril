@@ -340,6 +340,180 @@ html[data-sidebar="closed"][data-sidebar-peek="true"] #sidebar {
   font-style: italic;
 }
 
+/* ---- Graph folders & graph pane ---- */
+/* A graph folder: accent bar, tint and icon in the theme's --graph-folder. */
+#tree .row.graph-folder {
+  box-shadow: inset 2px 0 0 var(--graph-folder);
+  background: color-mix(in srgb, var(--graph-folder) 10%, transparent);
+}
+#tree .row.graph-folder:hover { background: color-mix(in srgb, var(--graph-folder) 18%, transparent); }
+#tree .row.graph-folder.graph-active { background: color-mix(in srgb, var(--graph-folder) 26%, transparent); }
+#tree .row.graph-folder > .icon, #tree .row.graph-folder .graph-badge .icon { color: var(--graph-folder); }
+#tree .row.graph-folder.graph-active .name { font-weight: 600; }
+#tree .graph-badge { display: inline-flex; margin-left: auto; padding-left: 4px; }
+#tree .graph-badge .icon { width: 12px; height: 12px; }
+#sidebar-section #root-name.graph-folder { color: var(--graph-folder); }
+#sidebar-section #root-name.graph-folder::after {
+  content: "";
+  width: 6px;
+  height: 6px;
+  margin-left: 6px;
+  border-radius: 50%;
+  background: var(--graph-folder);
+  flex: none;
+}
+
+/* The switch above: shows / hides the whole graph pane. */
+#graph-switch { display: inline-flex; align-items: center; gap: 5px; color: var(--muted); cursor: pointer; }
+#graph-switch .icon { width: 13px; height: 13px; }
+#graph-switch input { position: absolute; opacity: 0; width: 0; height: 0; }
+#graph-switch .track { position: relative; width: 26px; height: 15px; border-radius: 8px; background: var(--active); transition: background .15s; }
+#graph-switch .track::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  transition: transform .15s;
+}
+#graph-switch input:checked + .track { background: var(--graph-folder); }
+#graph-switch input:checked + .track::after { transform: translateX(11px); }
+#graph-switch input:focus-visible + .track { box-shadow: 0 0 0 2px var(--accent); }
+#graph-switch:has(input:checked) .icon { color: var(--graph-folder); }
+
+#tree { min-height: 60px; }
+#graph-split { height: 5px; margin: -2px 0; flex: none; cursor: row-resize; z-index: 1; }
+#graph-split:hover { background: var(--accent); opacity: .4; }
+#graph-pane {
+  position: relative;
+  height: var(--graph-h, 260px);
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  margin: 0 8px 6px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--graph-bg, var(--bg));
+}
+html[data-graph-pane="closed"] :is(#graph-pane, #graph-split) { display: none; }
+#graph-pane .gp-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 26px;
+  padding: 0 8px;
+  flex: none;
+  border-bottom: 1px solid var(--border);
+  background: var(--bar-bg);
+  font-size: calc(var(--ui-size) - 1.5px);
+}
+#graph-pane .gp-head .icon { width: 12px; height: 12px; color: var(--graph-folder); }
+#graph-pane .gp-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+#graph-pane .gp-count { color: var(--muted); }
+#graph-pane .gp-canvas { flex: 1; min-height: 0; cursor: zoom-in; }
+#graph-pane .gp-empty {
+  position: absolute;
+  inset: 26px 0 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+  text-align: center;
+  color: var(--muted);
+  font-size: calc(var(--ui-size) - 1px);
+  line-height: 1.5;
+}
+#graph-pane .gp-empty small { opacity: .8; }
+#graph-pane[data-state="graph"] .gp-empty { display: none; }
+#graph-pane[data-state="empty"] .gp-canvas { visibility: hidden; }
+
+/* The zoomed graph: a large stage over the dimmed window. */
+#graph-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  border-radius: var(--window-radius);
+  background: rgba(0, 0, 0, 0);
+  transition: background .25s ease;
+}
+#graph-overlay[hidden] { display: none; }
+#graph-overlay.open { background: rgba(0, 0, 0, 0.55); }
+#graph-overlay .go-stage {
+  position: absolute;
+  /* Below the toolbar: its drag region would swallow clicks on anything over it. */
+  inset: calc(var(--toolbar-h) + 18px) 5vw 5vh;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  overflow: hidden;
+  background: var(--graph-bg, var(--bg));
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.45);
+  opacity: 0;
+  transform: scale(.92);
+  transition: opacity .25s ease, transform .3s cubic-bezier(.2, .8, .2, 1);
+}
+#graph-overlay.open .go-stage { opacity: 1; transform: none; }
+#graph-overlay .go-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+  padding: 0 8px 0 14px;
+  flex: none;
+  border-bottom: 1px solid var(--border);
+  background: var(--bar-bg);
+}
+#graph-overlay .go-head .icon { width: 14px; height: 14px; color: var(--graph-folder); }
+#graph-overlay .go-title { font-weight: 600; }
+#graph-overlay .go-count { color: var(--muted); font-size: calc(var(--ui-size) - 1px); }
+#graph-overlay .go-hint { flex: 1; text-align: right; color: var(--muted); font-size: calc(var(--ui-size) - 1.5px); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+#graph-overlay .go-close { display: inline-flex; padding: 5px; border: none; border-radius: 6px; background: transparent; color: var(--muted); cursor: pointer; }
+#graph-overlay .go-close:hover { background: var(--hover); color: var(--fg); }
+#graph-overlay .go-body { position: relative; flex: 1; min-height: 0; }
+#graph-overlay .go-canvas { position: absolute; inset: 0; }
+
+/* Details card for the clicked node. */
+#graph-overlay .go-card {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  bottom: 12px;
+  width: 260px;
+  overflow: auto;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--bar-bg) 92%, transparent);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+  font-size: calc(var(--ui-size) - 0.5px);
+  align-self: flex-start;
+  max-height: calc(100% - 24px);
+  bottom: auto;
+}
+#graph-overlay .go-card[hidden] { display: none; }
+#graph-overlay .go-card h3 { margin: 4px 0 4px; font-size: calc(var(--ui-size) + 2px); overflow-wrap: anywhere; }
+#graph-overlay .go-card h4 { margin: 12px 0 4px; font-size: calc(var(--ui-size) - 1.5px); font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+#graph-overlay .go-card h4 span { font-weight: 400; }
+#graph-overlay .go-card ul { list-style: none; margin: 0; padding: 0; }
+#graph-overlay .go-card button { display: flex; align-items: center; gap: 7px; width: 100%; padding: 4px 6px; border: none; border-radius: 6px; background: transparent; color: var(--fg); font: inherit; text-align: left; cursor: pointer; }
+#graph-overlay .go-card button:hover { background: var(--hover); }
+#graph-overlay .go-card .label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#graph-overlay .go-card .dot { width: 9px; height: 9px; border-radius: 50%; flex: none; background: radial-gradient(circle, #fff 0 25%, var(--dot) 60%); box-shadow: 0 0 6px var(--dot); }
+#graph-overlay .go-card .tag .dot { background: transparent; border: 2px solid var(--dot); }
+#graph-overlay .gc-kind { display: inline-block; padding: 1px 7px; border-radius: 9px; font-size: calc(var(--ui-size) - 2px); font-weight: 600; color: var(--graph-bg, var(--bg)); background: var(--dot, var(--graph-note)); }
+#graph-overlay .gc-path { color: var(--muted); font-size: calc(var(--ui-size) - 2px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; direction: rtl; text-align: left; }
+#graph-overlay .gc-none { color: var(--muted); font-style: italic; }
+/* Hover label (3d-force-graph's tooltip). */
+.graph-tip { padding: 3px 8px; border-radius: 6px; background: var(--bar-bg); color: var(--fg); border: 1px solid var(--border); font: calc(var(--ui-size) - 0.5px) var(--ui-font); }
+.graph-tip.tag { color: var(--graph-tag); }
+
 #sidebar-foot { flex: none; margin: 0 8px; padding: 8px 0; border-top: 1px solid var(--border); display: flex; justify-content: center; }
 #sidebar-foot button { padding: 5px 14px; border-radius: 8px; }
 

@@ -72,6 +72,8 @@ function applyTheme(): void {
   styleEl('md-theme').textContent = mode === 'dark' ? darkCss : lightCss
   styleEl('md-theme-vars').textContent = previewCss(palette)
   view.dispatch({ effects: themeCompartment.reconfigure(editorExtension(palette, mode)) })
+  // The graph paints on a WebGL canvas, not with CSS: it re-reads its colours on this.
+  document.dispatchEvent(new CustomEvent('theme-applied'))
 }
 
 /** Quote a family name for CSS and fall back to the built-in stack. */

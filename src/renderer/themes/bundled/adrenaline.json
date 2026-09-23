@@ -18,7 +18,23 @@
     "hrColor": "rgb(224, 224, 224)",
     "linkColor": "rgb(139, 108, 239)",
     "blockquoteBorder": "rgb(139, 108, 239)",
-    "highlightBg": "rgba(255, 208, 0, 0.4)"
+    "highlightBg": "rgba(255, 208, 0, 0.4)",
+    "graphNote": "rgb(90, 90, 90)",
+    "graphTag": "rgb(8, 185, 78)",
+    "graphLink": "rgb(212, 212, 212)",
+    "graphHighlight": "rgb(139, 108, 239)",
+    "graphBg": "rgb(238, 237, 242)",
+    "graphFolder": "rgb(8, 185, 78)",
+    "graphColors": [
+      "rgb(8, 109, 221)",
+      "rgb(236, 117, 0)",
+      "rgb(8, 185, 78)",
+      "rgb(120, 82, 238)",
+      "rgb(224, 172, 0)",
+      "rgb(0, 191, 188)",
+      "rgb(233, 49, 71)",
+      "rgb(213, 57, 132)"
+    ]
   },
   "dark": {
     "bg": "rgb(25, 25, 26)",
@@ -35,7 +51,23 @@
     "hrColor": "rgb(54, 54, 54)",
     "linkColor": "rgb(139, 108, 239)",
     "blockquoteBorder": "rgb(139, 108, 239)",
-    "highlightBg": "rgba(255, 208, 0, 0.4)"
+    "highlightBg": "rgba(255, 208, 0, 0.4)",
+    "graphNote": "rgb(179, 179, 179)",
+    "graphTag": "rgb(8, 185, 78)",
+    "graphLink": "rgb(63, 63, 63)",
+    "graphHighlight": "rgb(139, 108, 239)",
+    "graphBg": "rgb(25, 25, 26)",
+    "graphFolder": "rgb(8, 185, 78)",
+    "graphColors": [
+      "rgb(8, 109, 221)",
+      "rgb(236, 117, 0)",
+      "rgb(8, 185, 78)",
+      "rgb(120, 82, 238)",
+      "rgb(224, 172, 0)",
+      "rgb(0, 191, 188)",
+      "rgb(233, 49, 71)",
+      "rgb(213, 57, 132)"
+    ]
   },
-  "licence": "See https://github.com/spekulucius/obsidian-adrenaline (palette only; imported 2026-09-20)"
+  "licence": "See https://github.com/spekulucius/obsidian-adrenaline (palette only; imported 2026-09-23)"
 }
