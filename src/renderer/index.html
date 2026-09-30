@@ -72,10 +72,13 @@
         <div id="sidebar-foot"><button id="sidebar-trash" title="Open the system Trash"><i data-icon="trash"></i><span>Trash</span></button></div>
       </aside>
       <div id="sidebar-split" aria-hidden="true"></div>
-      <main id="panes" data-mode="split">
-        <section id="editor" aria-label="Editor"></section>
-        <section id="preview" class="markdown-body" aria-label="Preview"></section>
-      </main>
+      <div id="docs">
+        <div id="tabbar" role="tablist" aria-label="Open documents"></div>
+        <main id="panes" data-mode="split">
+          <section id="editor" aria-label="Editor"></section>
+          <section id="preview" class="markdown-body" aria-label="Preview"></section>
+        </main>
+      </div>
     </div>
     <footer id="statusbar"><span id="status-path" title="Full path of the open file"></span></footer>
     </div>
@@ -155,6 +158,7 @@
                   <ul class="results" data-target="uiFont"></ul>
                 </div>
                 <label class="size">Size <input type="number" data-size="uiFontSize" min="9" max="24" step="0.5" /> px</label>
+                <label class="size">Weight <select data-weight="uiFontWeight"></select></label>
               </div>
             </div>
             <div class="setting stacked">
@@ -166,6 +170,7 @@
                   <ul class="results" data-target="editorFont"></ul>
                 </div>
                 <label class="size">Size <input type="number" data-size="editorFontSize" min="9" max="40" step="0.5" /> px</label>
+                <label class="size">Weight <select data-weight="editorFontWeight"></select></label>
               </div>
             </div>
           </section>
@@ -181,6 +186,14 @@
             <div class="setting">
               <div class="info"><div class="name">Live preview</div><div class="desc">In Edit view, render Markdown in place; the line under the cursor shows its source. <kbd>Ctrl+Shift+E</kbd></div></div>
               <div class="control"><label class="switch"><input type="checkbox" id="live-preview" /><span></span></label></div>
+            </div>
+            <div class="setting">
+              <div class="info"><div class="name">Wrap text</div><div class="desc">Wrap long lines to the width of the editor in Edit and Split view, instead of scrolling sideways. <kbd>Alt+Z</kbd></div></div>
+              <div class="control"><label class="switch"><input type="checkbox" id="wrap-text" /><span></span></label></div>
+            </div>
+            <div class="setting">
+              <div class="info"><div class="name">Tab size</div><div class="desc">Spaces inserted by <kbd>Tab</kbd>, up to the next tab stop. With several lines selected, <kbd>Tab</kbd> indents them and <kbd>Shift+Tab</kbd> outdents. In a table, <kbd>Tab</kbd> still moves between cells.</div></div>
+              <div class="control"><label class="size"><input type="number" id="tab-size" min="1" max="16" step="1" /> spaces</label></div>
             </div>
             <div class="setting stacked">
               <div class="info"><div class="name">Multiple cursors</div><div class="desc">Sublime Text-style editing with several carets at once, in Edit and Split view. <kbd>Ctrl</kbd>+click or <kbd>Alt</kbd>+click (<kbd>⌘</kbd>+click on macOS) adds a caret, dragging adds a selection, <kbd>Esc</kbd> returns to one caret. Keyboard shortcuts are listed under <b>Keybindings</b>, where they can be changed.</div></div>

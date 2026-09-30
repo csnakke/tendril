@@ -2,14 +2,18 @@ import type { IconName, IconSet } from './types'
 import lucide from './lucide'
 import tabler from './tabler'
 import phosphor from './phosphor'
+import remix from './remix'
+import iconoir from './iconoir'
 
 export type { IconName } from './types'
-export type IconSetId = 'lucide' | 'tabler' | 'phosphor'
+export type IconSetId = 'lucide' | 'tabler' | 'phosphor' | 'remix' | 'iconoir'
 
 export const ICON_SETS: Record<IconSetId, { name: string; set: IconSet }> = {
   lucide: { name: 'Lucide', set: lucide },
   tabler: { name: 'Tabler', set: tabler },
-  phosphor: { name: 'Phosphor', set: phosphor }
+  phosphor: { name: 'Phosphor', set: phosphor },
+  remix: { name: 'Remix', set: remix },
+  iconoir: { name: 'Iconoir', set: iconoir }
 }
 
 let current: IconSetId = 'lucide'

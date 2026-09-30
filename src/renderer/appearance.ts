@@ -95,6 +95,8 @@ async function applyFonts(): Promise<void> {
   root.setProperty('--preview-font', stack(current.editorFont, uiBase))
   root.setProperty('--ui-size', `${current.uiFontSize}px`)
   root.setProperty('--editor-size', `${current.editorFontSize}px`)
+  root.setProperty('--ui-weight', String(current.uiFontWeight))
+  root.setProperty('--editor-weight', String(current.editorFontWeight))
 }
 
 export function settings(): Settings {
@@ -108,7 +110,7 @@ export async function updateSettings(patch: Partial<Settings>): Promise<void> {
     await applyFonts()
   }
   if ('borderColor' in patch) applyBorder()
-  if ('uiFont' in patch || 'editorFont' in patch || 'uiFontSize' in patch || 'editorFontSize' in patch) await applyFonts()
+  if (['uiFont', 'editorFont', 'uiFontSize', 'editorFontSize', 'uiFontWeight', 'editorFontWeight'].some((k) => k in patch)) await applyFonts()
   if ('iconSet' in patch) setIconSet(current.iconSet)
 }
 

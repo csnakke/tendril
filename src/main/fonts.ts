@@ -189,7 +189,10 @@ export async function installedFamilies(): Promise<FontFamily[]> {
 /**
  * @font-face rules for a family. `embed` inlines the files as data: URIs for a
  * self-contained HTML export; otherwise file:// URLs are used (app + PDF print).
- * Only the four faces a document needs are emitted to bound export size.
+ *
+ * In the app every face the family has is declared (file URLs cost nothing
+ * until used), so any weight picked in Settings › Fonts renders with its real
+ * face. An export declares only the four faces a document needs, to bound its size.
  */
 export async function fontFaceCss(family: string, embed: boolean): Promise<string> {
   const fam = (await installedFamilies()).find((f) => f.family === family)
@@ -200,9 +203,11 @@ export async function fontFaceCss(family: string, embed: boolean): Promise<strin
     { weight: 400, style: 'italic' },
     { weight: 700, style: 'italic' }
   ] as const
+  const faces = embed
+    ? wanted.map((w) => ({ ...w, face: closestFace(fam.faces, w.weight, w.style) }))
+    : fam.faces.map((f) => ({ weight: f.weight, style: f.style, face: f }))
   const rules: string[] = []
-  for (const w of wanted) {
-    const face = closestFace(fam.faces, w.weight, w.style)
+  for (const { face, ...w } of faces) {
     if (!face) continue
     const fmt = extname(face.file).toLowerCase() === '.otf' ? 'opentype' : 'truetype'
     const src = embed

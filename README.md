@@ -277,6 +277,7 @@ the new keys, `↺` restores the default. On macOS read `Ctrl` as `⌘`.
 | Export to PDF… | `Ctrl+P` |
 | Export HTML… | *Export button / File menu* |
 | Settings | `Ctrl+,` |
+| Close tab | `Ctrl+W` |
 
 ### 👁️ View
 
@@ -287,6 +288,8 @@ the new keys, `↺` restores the default. On macOS read `Ctrl` as `⌘`.
 | Toggle sidebar | `Ctrl+B` |
 | Toggle graph pane | `Ctrl+Shift+G` |
 | Live preview in Edit view | `Ctrl+Shift+E` |
+| Wrap text in Edit / Split view | `Alt+Z` |
+| Next / previous tab | `Ctrl+Tab` / `Ctrl+Shift+Tab` |
 
 ### ✏️ Editing
 
@@ -297,6 +300,11 @@ the new keys, `↺` restores the default. On macOS read `Ctrl` as `⌘`.
 | Insert image | `Ctrl+Alt+I` |
 | Insert chart / edit the one under the cursor | `Ctrl+Alt+G` |
 | Next cell / previous cell (in a table) | `Tab` / `Shift+Tab` |
+| Indent with spaces / outdent (elsewhere; width in **Settings › Editor › Tab size**) | `Tab` / `Shift+Tab` |
+
+Files open in **tabs** — drag to reorder, middle-click to close. Closing the window never
+asks: like Sublime Text's hot exit, every open tab and any unsaved text in it is kept and
+comes back on the next start (stored in the app's `session.json`, readable only by you).
 
 ### 🖱️ Multiple cursors
 
@@ -678,7 +686,8 @@ it to maximize, `☰` opens the menu, and the `–`/`□`/`✕` controls sit top
 | 🖌️ | Window border | Any colour, or "Theme default" |
 | 🔤 | Interface font | Any installed family, or a downloaded Nerd Font |
 | ⌨️ | Editor & preview font | Same, Mono variant |
-| 🧩 | Icon set | Lucide / Tabler / Phosphor |
+| 🅱️ | Font weight | Light → Bold (whatever the chosen font has), for interface and editor separately |
+| 🧩 | Icon set | Lucide / Tabler / Phosphor / Remix / Iconoir |
 
 ### 🅰️ Nerd Fonts, without installing them
 

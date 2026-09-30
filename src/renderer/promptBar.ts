@@ -60,6 +60,8 @@ const waitingMarker = EditorView.decorations.compute([waiting, 'selection'], (st
 )
 
 let busy = false
+// The request in flight, settled once its reply is tidied up (see stopPrompt).
+let running: Promise<void> | null = null
 
 /** Editor extension: the waiting marker, reply position tracking, and Escape to stop a running reply. */
 export const promptStream = [
@@ -120,25 +122,42 @@ async function send(view: EditorView, prompt: string): Promise<void> {
   view.dispatch({ effects: setWaiting.of(true) })
   view.dom.classList.add('prompting')
   view.focus()
-  try {
-    const reply = await window.api.llmComplete(prompt, selection, (text) => {
-      // The first piece decides the spot: wherever the caret has ended up.
-      if (!out.stream) {
-        stopWaiting(view)
-        out.stream = new Stream(view, view.state.selection.main.to)
-      }
-      out.stream.append(text)
-    })
-    stopWaiting(view)
-    out.stream?.finish(reply === null)
-  } catch (err) {
-    stopWaiting(view)
-    out.stream?.finish(true)
-    await alertBox('The model did not answer', errorMessage(err))
-  } finally {
-    busy = false
-    view.dom.classList.remove('prompting')
-  }
+  let failure: unknown = null
+  running = (async () => {
+    try {
+      const reply = await window.api.llmComplete(prompt, selection, (text) => {
+        // The first piece decides the spot: wherever the caret has ended up.
+        if (!out.stream) {
+          stopWaiting(view)
+          out.stream = new Stream(view, view.state.selection.main.to)
+        }
+        out.stream.append(text)
+      })
+      stopWaiting(view)
+      out.stream?.finish(reply === null)
+    } catch (err) {
+      stopWaiting(view)
+      out.stream?.finish(true)
+      failure = err
+    } finally {
+      busy = false
+      running = null
+      view.dom.classList.remove('prompting')
+    }
+  })()
+  await running
+  if (failure) await alertBox('The model did not answer', errorMessage(failure))
+}
+
+/**
+ * Stop a reply that is still arriving and wait until it is tidied up. The
+ * reply writes into whatever document the editor shows, so this runs before
+ * another tab is swapped in.
+ */
+export async function stopPrompt(): Promise<void> {
+  if (!running) return
+  window.api.llmCancel()
+  await running
 }
 
 function stopWaiting(view: EditorView): void {

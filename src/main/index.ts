@@ -15,6 +15,8 @@ import { resolveBindings, type Keybindings } from '../shared/keybindings'
 import { complete as llmComplete, test as llmTest } from './llm'
 import { writeFileAtomic } from './fsx'
 import { buildGraph, disableGraph, enableGraph, forgetGraph, isGraphFolder, unwatchGraph } from './graph'
+import { loadSession, saveSession } from './session'
+import { MAX_TEXT_BYTES, readTextFile } from './textFile'
 
 type Command = string
 
@@ -25,11 +27,15 @@ type Command = string
 const wayland = process.platform === 'linux' && !!process.env['WAYLAND_DISPLAY'] && !process.argv.includes('--ozone-platform=x11')
 
 let win: BrowserWindow | null = null
-let dirty = false
 let forceClose = false
+// Set once the renderer has asked for the session, i.e. it is up and able to
+// answer 'hotExit'. Before that (or after a crash) the window just closes.
+let sessionReady = false
 
 const MD_FILTERS = [{ name: 'Markdown', extensions: ['md', 'markdown', 'txt', 'html', 'htm'] }]
-const TEXT_FILE = /\.(md|markdown|txt|html?)$/i
+// Open also offers every file: anything that turns out to be text opens (see textFile.ts).
+const OPEN_FILTERS = [...MD_FILTERS, { name: 'All Files', extensions: ['*'] }]
+const NOT_TEXT = `Tendril opens text files: Markdown, plain text, HTML, config files like .env and the like, up to ${MAX_TEXT_BYTES / 1024 / 1024} MB. This one looks binary or is too large.`
 
 function send(cmd: Command): void {
   win?.webContents.send('command', cmd)
@@ -81,7 +87,8 @@ function menuTemplate(keys: Record<string, string>): MenuItemConstructorOptions[
         { type: 'separator' },
         { label: 'Settings…', accelerator: acc('settings'), click: () => send('settings') },
         { type: 'separator' },
-        isMac ? { role: 'close' } : { role: 'quit' }
+        { label: 'Close Tab', accelerator: acc('closeTab'), click: () => send('closeTab') },
+        ...(isMac ? [] : [{ role: 'quit' as const }])
       ]
     },
     {
@@ -113,6 +120,10 @@ function menuTemplate(keys: Record<string, string>): MenuItemConstructorOptions[
         { label: 'Toggle Sidebar', accelerator: acc('toggleSidebar'), click: () => send('toggleSidebar') },
         { label: 'Toggle Graph Pane', accelerator: acc('toggleGraphPane'), click: () => send('toggleGraphPane') },
         { label: 'Live Preview in Edit View', accelerator: acc('toggleLivePreview'), click: () => send('toggleLivePreview') },
+        { label: 'Wrap Text', accelerator: acc('toggleWrap'), click: () => send('toggleWrap') },
+        { type: 'separator' },
+        { label: 'Next Tab', accelerator: acc('nextTab'), click: () => send('nextTab') },
+        { label: 'Previous Tab', accelerator: acc('prevTab'), click: () => send('prevTab') },
         { type: 'separator' },
         // Reload throws the unsaved document away; it is a development aid only.
         ...(app.isPackaged ? [] : [{ role: 'reload' as const }]),
@@ -125,7 +136,8 @@ function menuTemplate(keys: Record<string, string>): MenuItemConstructorOptions[
         { role: 'togglefullscreen' }
       ]
     },
-    { label: 'Window', submenu: [{ role: 'minimize' }, { role: 'zoom' }, ...(isMac ? [{ type: 'separator' as const }, { role: 'front' as const }] : [{ role: 'close' as const }])] }
+    // Not role 'close': its built-in CmdOrCtrl+W belongs to Close Tab.
+    { label: 'Window', submenu: [{ role: 'minimize' }, { role: 'zoom' }, { label: 'Close Window', click: () => win?.close() }, ...(isMac ? [{ type: 'separator' as const }, { role: 'front' as const }] : [])] }
   ])
 }
 
@@ -165,16 +177,19 @@ function createWindow(): void {
     return { action: 'deny' }
   })
 
-  // Unsaved changes: the renderer shows a themed Save / Don't Save / Cancel
-  // box and answers with 'saveAndClose' or window:close.
+  // Hot exit: nothing is asked. The renderer writes the open tabs, unsaved
+  // text included, to the session and answers with window:close.
   win.on('close', (e) => {
-    if (forceClose || !dirty) return
+    if (forceClose || !sessionReady || win!.webContents.isCrashed()) return
     e.preventDefault()
-    send('confirmClose')
+    send('hotExit')
   })
+  win.webContents.on('render-process-gone', () => (sessionReady = false))
 
   win.on('closed', () => {
     win = null
+    forceClose = false
+    sessionReady = false
     unwatchAll()
     unwatchGraph()
   })
@@ -222,7 +237,8 @@ function createWindow(): void {
   }
 
   // File passed on the command line (double-click / `tendril file.md`).
-  const argPath = process.argv.slice(app.isPackaged ? 1 : 2).find((a) => /\.(md|markdown|txt)$/i.test(a))
+  // Any non-flag argument; openInWindow drops it unless it is a text file.
+  const argPath = process.argv.slice(app.isPackaged ? 1 : 2).find((a) => !a.startsWith('-'))
   win.webContents.once('did-finish-load', () => {
     const p = pendingOpen ?? (argPath && resolve(argPath))
     pendingOpen = null
@@ -257,26 +273,23 @@ function on(channel: string, fn: (e: IpcMainEvent, ...args: never[]) => void): v
 }
 
 handle('file:open', async () => {
-  const r = await dialog.showOpenDialog(win!, { properties: ['openFile'], filters: MD_FILTERS })
+  const r = await dialog.showOpenDialog(win!, { properties: ['openFile'], filters: OPEN_FILTERS })
   if (r.canceled || r.filePaths.length === 0) return null
   const path = r.filePaths[0]
-  if (!TEXT_FILE.test(path)) {
-    await dialog.showMessageBox(win!, { type: 'warning', message: 'Cannot open file', detail: 'Tendril opens Markdown, text and HTML files.' })
+  const content = await readTextFile(path)
+  if (content === null) {
+    await dialog.showMessageBox(win!, { type: 'warning', message: 'Cannot open file', detail: NOT_TEXT })
     return null
   }
   allowAssetsIn(dirname(path))
-  return { path, content: await fs.readFile(path, 'utf8') }
+  return { path, content }
 })
 
 handle('file:read', async (_e, path: string) => {
-  if (!TEXT_FILE.test(path)) return null // never load binaries into the editor
-  try {
-    const content = await fs.readFile(path, 'utf8')
-    allowAssetsIn(dirname(path))
-    return { path, content }
-  } catch {
-    return null
-  }
+  const content = await readTextFile(path) // never load binaries into the editor
+  if (content === null) return null
+  allowAssetsIn(dirname(path))
+  return { path, content }
 })
 
 handle('file:save', async (_e, path: string | null, content: string, suggested?: string) => {
@@ -548,9 +561,14 @@ handle('themes:save', (_e, def: ThemeDef) => saveTheme(def))
 handle('themes:uninstall', (_e, id: string) => uninstallTheme(id))
 
 on('state:dirty', (_e, d: boolean) => {
-  dirty = d
   win?.setDocumentEdited(d)
 })
+
+handle('session:load', () => {
+  sessionReady = true
+  return loadSession()
+})
+handle('session:save', (_e, session: unknown) => saveSession(session))
 
 on('state:title', (_e, title: string) => {
   win?.setTitle(title ? `${basename(title)} — Tendril` : 'Tendril')
@@ -718,14 +736,10 @@ app.on('open-file', (e, path) => {
 })
 
 async function openInWindow(path: string): Promise<void> {
-  if (!TEXT_FILE.test(path)) return
-  try {
-    const content = await fs.readFile(path, 'utf8')
-    allowAssetsIn(dirname(path))
-    win?.webContents.send('file:opened', { path, content })
-  } catch {
-    /* ignore unreadable file */
-  }
+  const content = await readTextFile(path)
+  if (content === null) return // not text, or unreadable
+  allowAssetsIn(dirname(path))
+  win?.webContents.send('file:opened', { path, content })
 }
 
 app.whenReady().then(async () => {

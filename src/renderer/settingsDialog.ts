@@ -19,7 +19,10 @@ export function openSettings(): void {
   authorInput.value = settings().author
   assetsInput.value = settings().assetsFolder
   livePreviewInput.checked = settings().livePreview
+  wrapTextInput.checked = settings().wrapText
+  tabSizeInput.value = String(settings().tabSize)
   syncSizes()
+  syncWeights()
   syncExport()
   syncAi()
   void syncTemplatesDir()
@@ -59,6 +62,24 @@ const livePreviewInput = $<HTMLInputElement>('#live-preview')
 livePreviewInput.addEventListener('change', () => {
   void updateSettings({ livePreview: livePreviewInput.checked }).then(() => document.dispatchEvent(new CustomEvent('settings-changed')))
 })
+
+const wrapTextInput = $<HTMLInputElement>('#wrap-text')
+wrapTextInput.addEventListener('change', () => {
+  void updateSettings({ wrapText: wrapTextInput.checked }).then(() => document.dispatchEvent(new CustomEvent('settings-changed')))
+})
+
+const tabSizeInput = $<HTMLInputElement>('#tab-size')
+const applyTabSize = (): void => {
+  const n = Math.round(Number(tabSizeInput.value))
+  if (!Number.isFinite(n) || tabSizeInput.value.trim() === '') return
+  const size = Math.min(16, Math.max(1, n))
+  tabSizeInput.value = String(size)
+  if (size !== settings().tabSize) {
+    void updateSettings({ tabSize: size }).then(() => document.dispatchEvent(new CustomEvent('settings-changed')))
+  }
+}
+tabSizeInput.addEventListener('input', applyTabSize)
+tabSizeInput.addEventListener('change', applyTabSize)
 
 // ---- Export -------------------------------------------------------------------
 
@@ -194,6 +215,41 @@ for (const i of sizeInputs) {
   i.addEventListener('change', apply)
 }
 
+// ---- Font weights ----------------------------------------------------------------
+
+type WeightKey = 'uiFontWeight' | 'editorFontWeight'
+const WEIGHT_NAMES: Record<number, string> = {
+  100: 'Thin', 200: 'Extra Light', 300: 'Light', 400: 'Regular', 450: 'Retina', 500: 'Medium', 600: 'Semi Bold', 700: 'Bold', 800: 'Extra Bold', 900: 'Black'
+}
+/** What the built-in font stacks offer; the system picks its nearest face. */
+const DEFAULT_WEIGHTS = [300, 400, 500, 600, 700]
+const weightSelects = [...dialog.querySelectorAll<HTMLSelectElement>('select[data-weight]')]
+const fontOf = (key: WeightKey): Target => (key === 'uiFontWeight' ? 'uiFont' : 'editorFont')
+
+/** Each weight select lists the upright weights the chosen family really has. */
+function syncWeights(): void {
+  for (const sel of weightSelects) {
+    const key = sel.dataset.weight as WeightKey
+    const fam = families.find((f) => f.family === settings()[fontOf(key)])
+    const weights = fam ? [...new Set(fam.faces.filter((f) => f.style === 'normal').map((f) => f.weight))].sort((a, b) => a - b) : DEFAULT_WEIGHTS
+    const cur = settings()[key]
+    // The saved weight stays listed even when this family lacks it; the browser then uses the nearest face.
+    const list = weights.includes(cur) ? weights : [...weights, cur].sort((a, b) => a - b)
+    sel.replaceChildren(
+      ...list.map((w) => {
+        const o = document.createElement('option')
+        o.value = String(w)
+        o.textContent = weights.includes(w) ? WEIGHT_NAMES[w] ?? String(w) : `${WEIGHT_NAMES[w] ?? w} (not in this font)`
+        o.selected = w === cur
+        return o
+      })
+    )
+  }
+}
+for (const sel of weightSelects) {
+  sel.addEventListener('change', () => void updateSettings({ [sel.dataset.weight as WeightKey]: Number(sel.value) }).then(syncWeights))
+}
+
 // ---- Font selectors ----------------------------------------------------------
 
 async function refreshFamilies(): Promise<void> {
@@ -211,11 +267,12 @@ async function refreshFamilies(): Promise<void> {
     }
     if (cur && !families.some((f) => f.family === cur)) sel.value = ''
   }
+  syncWeights()
 }
 
 dialog.querySelectorAll<HTMLSelectElement>('select[data-target]').forEach((sel) => {
   sel.addEventListener('change', () => {
-    void updateSettings({ [sel.dataset.target as Target]: sel.value || null })
+    void updateSettings({ [sel.dataset.target as Target]: sel.value || null }).then(syncWeights)
   })
 })
 

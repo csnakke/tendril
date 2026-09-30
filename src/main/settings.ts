@@ -13,6 +13,9 @@ export interface Settings {
   editorFont: string | null
   /** Pixel sizes for the interface and for the editor (the preview scales with it). */
   uiFontSize: number
+  /** CSS font weight of the UI and of the editor/preview text (400 = regular, 700 = bold). */
+  uiFontWeight: number
+  editorFontWeight: number
   editorFontSize: number
   /** CSS colour for the window boundary; null = theme default. */
   borderColor: string | null
@@ -25,9 +28,13 @@ export interface Settings {
   graphPaneHeight: number
   /** ThemeDef id: 'builtin:<slug>' or 'obsidian:<owner>/<repo>'. */
   themeId: string
-  iconSet: 'lucide' | 'tabler' | 'phosphor'
+  iconSet: 'lucide' | 'tabler' | 'phosphor' | 'remix' | 'iconoir'
   /** Render Markdown in place in Edit view (raw source on the cursor line). */
   livePreview: boolean
+  /** Soft-wrap long lines in the editor (Edit and Split view) and in a plain-text preview. */
+  wrapText: boolean
+  /** Columns per Tab press; Tab inserts spaces (soft tabs). */
+  tabSize: number
   /** Expands {{author}} in templates. */
   author: string
   /** Folder holding the user's templates; null = userData/templates. */
@@ -71,6 +78,8 @@ export const DEFAULT_SETTINGS: Settings = {
   uiFont: null,
   editorFont: null,
   uiFontSize: 13,
+  uiFontWeight: 400,
+  editorFontWeight: 400,
   editorFontSize: 14,
   borderColor: null,
   sidebarOpen: true,
@@ -81,6 +90,8 @@ export const DEFAULT_SETTINGS: Settings = {
   themeId: 'builtin:catppuccin',
   iconSet: 'lucide',
   livePreview: true,
+  wrapText: true,
+  tabSize: 4,
   author: '',
   templatesDir: null,
   assetsFolder: 'assets',

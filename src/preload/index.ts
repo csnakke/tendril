@@ -5,6 +5,8 @@ export type { ObsidianTheme, ThemeDef, ThemePalette } from '../main/themes'
 export type { Template, TemplateKind } from '../main/templates'
 export type { Keybindings } from '../shared/keybindings'
 export type { GraphData, GraphLink, GraphNode } from '../shared/graph'
+export type { Session, SessionTab } from '../main/session'
+import type { Session } from '../main/session'
 import type { GraphData } from '../shared/graph'
 import type { Template } from '../main/templates'
 
@@ -13,7 +15,6 @@ export type Command =
   | 'open'
   | 'save'
   | 'saveAs'
-  | 'saveAndClose'
   | 'exportHtml'
   | 'exportPdf'
   | 'toc'
@@ -25,8 +26,12 @@ export type Command =
   | 'toggleSidebar'
   | 'toggleGraphPane'
   | 'toggleLivePreview'
+  | 'toggleWrap'
   | 'newFromTemplate'
-  | 'confirmClose'
+  | 'hotExit'
+  | 'closeTab'
+  | 'nextTab'
+  | 'prevTab'
   | 'insertTable'
   | 'insertImage'
   | 'insertChart'
@@ -51,6 +56,8 @@ export interface Settings {
   uiFont: string | null
   editorFont: string | null
   uiFontSize: number
+  uiFontWeight: number
+  editorFontWeight: number
   editorFontSize: number
   borderColor: string | null
   sidebarOpen: boolean
@@ -59,8 +66,10 @@ export interface Settings {
   graphPaneOpen: boolean
   graphPaneHeight: number
   themeId: string
-  iconSet: 'lucide' | 'tabler' | 'phosphor'
+  iconSet: 'lucide' | 'tabler' | 'phosphor' | 'remix' | 'iconoir'
   livePreview: boolean
+  wrapText: boolean
+  tabSize: number
   author: string
   templatesDir: string | null
   assetsFolder: string
@@ -196,6 +205,9 @@ const api = {
   onGraphMarker: (cb: (dir: string, enabled: boolean) => void): void => {
     ipcRenderer.on('graph:marker', (_e, dir: string, enabled: boolean) => cb(dir, enabled))
   },
+  /** The tabs left open last time (hot exit), or null on a first start. */
+  loadSession: (): Promise<Session | null> => ipcRenderer.invoke('session:load'),
+  saveSession: (session: Session): Promise<void> => ipcRenderer.invoke('session:save', session),
   setDirty: (dirty: boolean): void => ipcRenderer.send('state:dirty', dirty),
   setTitle: (title: string): void => ipcRenderer.send('state:title', title),
   closeWindow: (): void => ipcRenderer.send('window:close'),
