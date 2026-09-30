@@ -1,7 +1,0 @@
-node_modules/
-out/
-dist/
-.claude/
-.git/
-.gitignore
-.DS_Store
