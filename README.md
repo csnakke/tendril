@@ -237,7 +237,6 @@ Then pick what you want to do:
 
 ```bash
 npm run dev            # hot-reloading development app
-npm test               # unit tests
 npm run typecheck      # tsc --noEmit, strict
 npm run compile        # build main/preload/renderer → out/
 npm run build:linux    # → dist/Tendril-<version>-linux-x86_64.AppImage
@@ -919,7 +918,6 @@ Found something? Please open an issue. 🐛
 ```bash
 npm install
 npm run dev          # hot-reloading app
-npm test             # unit tests (vitest, tests/**/*.test.ts)
 npm run typecheck    # tsc --noEmit, strict
 npm run compile      # build main/preload/renderer into out/
 npm run build:linux  # | build:win | build:mac → dist/
@@ -952,7 +950,6 @@ src/
 └── shared/        ⌨️  shared by both processes: keybindings, front matter, graph model, lint types
 
 templates/         📦  starter pack: Notes.md, Reports.md and their reference README
-tests/             🧪  vitest unit tests (charts model, SVG renderer, pipeline, sanitizer)
 icons/             🎨  application icon and the image at the top of this file
 scripts/           🔧  build helpers (AppImage thumbnails, Obsidian theme pre-import)
 install.sh         🐳  one-command installer: builds in a throwaway container (Linux, macOS)
@@ -971,9 +968,7 @@ install.sh         🐳  one-command installer: builds in a throwaway container 
 - **Charts are static SVG built in `charts/svg.ts`.** Never use `fill-opacity`,
   `stroke-opacity` or rgba colours there: Chromium's PDF output leaks that alpha into the
   next gradient fill, which then prints see-through. Wrap translucent shapes in
-  `<g opacity>` (`faintGroup`); a unit test enforces it.
-- **Tests** live in `tests/` — `charts.test.ts` runs in Node, `charts.sanitize.test.ts` in
-  jsdom to prove chart markup survives DOMPurify.
+  `<g opacity>` (`faintGroup`).
 
 ---
 
