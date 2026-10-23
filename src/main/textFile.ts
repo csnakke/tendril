@@ -5,13 +5,15 @@ import { extname } from 'node:path'
  * What the editor can open: decided by content, not by name, so `.env`,
  * `Makefile`, `notes.log` or a file with no extension open like any note.
  *
- * Known text extensions open as before (a stray Latin-1 byte becomes U+FFFD
- * rather than refusing the file). Anything else is sniffed: no NUL byte in
- * the first 8 KB (binaries almost always have one) and the whole file valid
- * UTF-8. Known binary formats are refused without reading them.
+ * Markdown and HTML open as before (a stray Latin-1 byte becomes U+FFFD
+ * rather than refusing the file). A `.txt` file or one with no extension
+ * (`Makefile`, `.env`) must be plain ASCII. Anything else is sniffed: no NUL
+ * byte in the first 8 KB (binaries almost always have one) and the whole file
+ * valid UTF-8. Known binary formats are refused without reading them.
  */
 
-const KNOWN_TEXT = /^\.(md|markdown|txt|html?)$/i
+const KNOWN_TEXT = /^\.(md|markdown|html?)$/i
+const ASCII_ONLY = /^(\.txt)?$/i
 const KNOWN_BINARY =
   /^\.(png|jpe?g|gif|webp|bmp|avif|ico|tiff?|psd|pdf|zip|gz|tgz|bz2|xz|7z|rar|zst|tar|jar|exe|dll|so|dylib|bin|o|a|class|pyc|wasm|mp[34]|m4a|wav|flac|ogg|mov|avi|mkv|webm|ttf|otf|woff2?|docx?|xlsx?|pptx?|odt|sqlite|db|iso|dmg|deb|rpm|appimage)$/i
 
@@ -28,10 +30,17 @@ export async function readTextFile(path: string): Promise<string | null> {
     if (!st.isFile() || st.size > MAX_TEXT_BYTES) return null
     const buf = await fs.readFile(path)
     if (KNOWN_TEXT.test(ext)) return buf.toString('utf8')
+    if (ASCII_ONLY.test(ext)) return isAscii(buf) ? buf.toString('latin1') : null
     if (buf.subarray(0, SNIFF_BYTES).includes(0)) return null
     // ignoreBOM keeps a leading BOM in the text, as readFile(…, 'utf8') did, so a save writes it back.
     return new TextDecoder('utf-8', { fatal: true, ignoreBOM: true }).decode(buf)
   } catch {
     return null // unreadable, vanished, or not valid UTF-8
   }
+}
+
+/** Printable ASCII plus the whitespace controls (tab, line feed, vertical tab, form feed, carriage return). */
+function isAscii(buf: Buffer): boolean {
+  for (const b of buf) if (b > 0x7e || (b < 0x20 && (b < 0x09 || b > 0x0d))) return false
+  return true
 }

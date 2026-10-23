@@ -9,6 +9,7 @@ export type { Session, SessionTab } from '../main/session'
 import type { Session } from '../main/session'
 import type { GraphData } from '../shared/graph'
 import type { Template } from '../main/templates'
+import type { LintKind, LintMessage } from '../shared/lint'
 
 export type Command =
   | 'new'
@@ -162,6 +163,8 @@ const api = {
   },
   /** Abort every in-flight completion (the editor runs one at a time). */
   llmCancel: (): void => ipcRenderer.send('llm:cancel'),
+  /** ESLint / Ruff findings for a source file's text (run in the main process, see main/lint.ts). */
+  lint: (kind: LintKind, text: string): Promise<LintMessage[]> => ipcRenderer.invoke('lint:run', kind, text),
   /** Reach the active provider and check the model; resolves with a short status line. */
   llmTest: (): Promise<string> => ipcRenderer.invoke('llm:test'),
   showInFolder: (path: string): Promise<void> => ipcRenderer.invoke('shell:showInFolder', path),

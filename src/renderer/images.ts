@@ -4,7 +4,7 @@ import { alertBox, confirmBox, errorMessage, messageBox } from './messageBox'
 import { collectImages, isLocalImage, type RenderEnv } from './markdown'
 import { tableContext } from './tables/editor'
 import { formatDate } from './placeholders'
-import { dirOf, droppedPaths, IMAGE_FILE, localUrl, relativePath, resolvePath, safeDecodeURI, stemOf } from './paths'
+import { dirOf, droppedPaths, IMAGE_FILE, isMarkdownFile, localUrl, relativePath, resolvePath, safeDecodeURI, stemOf } from './paths'
 
 /**
  * Images in notes. Inserted images (Insert Image…, drag & drop, paste) are
@@ -89,6 +89,9 @@ interface Host {
   save: () => Promise<boolean>
 }
 let host: Host
+
+/** Images go into Markdown only: `![…](…)` means nothing in a .txt or .py file. */
+const takesImages = (): boolean => !!host && isMarkdownFile(host.docPath())
 
 type Source = { name: string; srcPath: string } | { name: string; data: ArrayBuffer }
 
@@ -204,18 +207,20 @@ export const imageDropPaste = EditorView.domEventHandlers({
   dragover: (e) => {
     if (!carriesFiles(e.dataTransfer)) return false
     e.preventDefault()
-    e.dataTransfer!.dropEffect = 'copy'
+    e.dataTransfer!.dropEffect = takesImages() ? 'copy' : 'none'
     return true
   },
   drop: (e, view) => {
     if (!carriesFiles(e.dataTransfer)) return false
     // Claim every file drop: CodeMirror would otherwise paste the bytes as text.
     e.preventDefault()
+    if (!takesImages()) return true
     const pos = view.posAtCoords({ x: e.clientX, y: e.clientY }) ?? view.state.selection.main.head
     void dropSources(e.dataTransfer!).then((s) => insertImages(s, pos))
     return true
   },
   paste: (e) => {
+    if (!takesImages()) return false
     const files = [...(e.clipboardData?.files ?? [])].filter((f) => f.type.startsWith('image/'))
     if (files.length === 0) return false
     e.preventDefault()
@@ -228,11 +233,12 @@ export const imageDropPaste = EditorView.domEventHandlers({
 document.addEventListener('dragover', (e) => {
   if (e.defaultPrevented || !carriesFiles(e.dataTransfer) || (e.target as HTMLElement).closest('#sidebar')) return
   e.preventDefault()
-  e.dataTransfer!.dropEffect = 'copy'
+  e.dataTransfer!.dropEffect = takesImages() ? 'copy' : 'none'
 })
 document.addEventListener('drop', (e) => {
   if (e.defaultPrevented || !carriesFiles(e.dataTransfer) || (e.target as HTMLElement).closest('#sidebar')) return
   e.preventDefault()
+  if (!takesImages()) return
   void dropSources(e.dataTransfer!).then((s) => insertImages(s))
 })
 

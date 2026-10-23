@@ -34,13 +34,14 @@ export const localUrl = (scheme: 'asset' | 'file', abs: string): string =>
 
 export const IMAGE_FILE = /\.(png|jpe?g|gif|webp|svg|bmp|avif)$/i
 /**
- * Files whose preview is rendered Markdown. Any other text file (.env, .log,
- * a file with no extension) opens too, but previews as plain text and gets no
- * live preview: `# comment` in a config file is not a heading. What counts as
- * text at all is decided by content in the main process (textFile.ts).
+ * Markdown proper, or untitled (which saves as .md). Only these are treated as
+ * Markdown: parsed and highlighted as such, previewed (Split / Reading view,
+ * live preview), given a table of contents. Any other text file (.txt, .env,
+ * .html, a file with no extension) is edited as plain text; source files get
+ * their own language (codeLanguage.ts). What counts as text at all is decided
+ * by content in the main process (textFile.ts).
  */
-const MARKUP_FILE = /\.(md|markdown|txt|html?)$/i
-export const rendersMarkdown = (path: string | null): boolean => !path || MARKUP_FILE.test(path)
+export const isMarkdownFile = (path: string | null): boolean => !path || /\.(md|markdown)$/i.test(path)
 
 /** `abs` relative to `dir` as a forward-slash path (`./x/y.png`), or null when it isn't inside `dir`. */
 export function relativePath(dir: string, abs: string): string | null {

@@ -257,8 +257,12 @@ export function openInsertTablePicker(view: EditorView, anchor: HTMLElement): vo
   showPopup(picker, r.left, r.bottom + 4)
 }
 
-/** `promptMe` opens the AI prompt bar; it lives outside this module because the bar builds on showPopup. */
-export function installTableMenu(view: EditorView, promptMe: () => void): void {
+/**
+ * `promptMe` opens the AI prompt bar; it lives outside this module because the
+ * bar builds on showPopup. `isMarkdown` says whether the shown file is a note:
+ * anything else gets no table, picture or chart items.
+ */
+export function installTableMenu(view: EditorView, promptMe: () => void, isMarkdown: () => boolean): void {
   view.dom.addEventListener('contextmenu', (e) => {
     const pos = view.posAtCoords({ x: e.clientX, y: e.clientY })
     if (pos == null) return
@@ -270,7 +274,9 @@ export function installTableMenu(view: EditorView, promptMe: () => void): void {
     const picture: Item = { label: 'Insert Picture…', run: openImageDialog }
     const prompt: Item = { label: 'Prompt Me…', run: promptMe }
     const insertChart: Item = { label: 'Insert Chart…', run: () => openChartDialog(view) }
-    const items = ctx
+    const items = !isMarkdown()
+      ? [...clipboardItems(view), { sep: true }, prompt]
+      : ctx
       ? [...clipboardItems(view), { sep: true }, prompt, { sep: true }, picture, { sep: true }, ...tableItems(view, ctx)]
       : chart
         ? [

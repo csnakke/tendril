@@ -1,6 +1,6 @@
 import { EditorView, basicSetup } from 'codemirror'
 import { Compartment, EditorState, type Extension, type StateEffect } from '@codemirror/state'
-import { markdown, markdownLanguage } from '@codemirror/lang-markdown'
+import { languageFor } from './codeLanguage'
 import { CHART_CSS, PAGES_CSS, PROPERTIES_CSS, TABLE_CSS, renderBody, renderStandaloneHtml } from './markdown'
 import { isPaged } from './pages'
 import { parseFrontMatter } from './frontmatter'
@@ -24,8 +24,7 @@ import { embeddedImageEnv, imageDropPaste, imageEnv, initImages, openImageDialog
 import { openImageViewer } from './imageViewer'
 import { linkPaste } from './linkPaste'
 import { openPromptBar, promptStream, stopPrompt } from './promptBar'
-import { IMAGE_FILE, rendersMarkdown } from './paths'
-import { escapeHtml } from './escape'
+import { IMAGE_FILE, isMarkdownFile } from './paths'
 import { initGraphPane, toggleGraphPane } from './graph/pane'
 import { openChartDialog } from './charts/dialog'
 import { chartAtLine } from './charts/editor'
@@ -43,6 +42,8 @@ const panesEl = $('#panes')
 const filenameEl = $('#filename')
 const statusPathEl = $('#status-path')
 
+// The view the user picked. A file that is not Markdown is always shown in
+// Edit view (see shownMode); the pick comes back with the next Markdown tab.
 let mode: Mode = 'split'
 // Settings are loaded (initAppearance); until then editor config uses defaults.
 let appearanceReady = false
@@ -76,16 +77,16 @@ const livePreviewCompartment = new Compartment()
 const keymapCompartment = new Compartment()
 const tabSizeCompartment = new Compartment()
 const wrapCompartment = new Compartment()
+// Markdown, or Python / JavaScript with linting: follows the tab's file name (codeLanguage.ts).
+const languageCompartment = new Compartment()
 
 let renderTimer: number | undefined
 
 /** Extensions for a fresh document state; the compartments are re-synced when its tab is shown. */
-function editorExtensions(): Extension[] {
+function editorExtensions(path: string | null): Extension[] {
   return [
     basicSetup,
-    // GFM base: tables, strikethrough and task lists parse (and live-preview) correctly.
-    // URL-over-selection pasting is handled by linkPaste below (see there).
-    markdown({ base: markdownLanguage, pasteURLAsLink: false }),
+    languageCompartment.of(languageFor(path)),
     themeCompartment.of(currentEditorTheme()),
     livePreviewCompartment.of([]),
     tabSizeCompartment.of(tabSizeConfig(currentTabSize())),
@@ -139,7 +140,7 @@ const tabs: Tab[] = []
 const lf = (text: string): string => text.replace(/\r\n?/g, '\n')
 
 function makeTab(o: { content: string; path: string | null; saved?: string; eol?: '\n' | '\r\n'; anchor?: number; head?: number }): Tab {
-  let state = EditorState.create({ doc: o.content, extensions: editorExtensions() })
+  let state = EditorState.create({ doc: o.content, extensions: editorExtensions(o.path) })
   if (o.anchor || o.head) {
     const clamp = (n = 0): number => Math.min(n, state.doc.length)
     state = state.update({ selection: { anchor: clamp(o.anchor), head: clamp(o.head) } }).state
@@ -163,7 +164,7 @@ tabs.push(active)
 
 const view = new EditorView({ parent: editorEl, state: active.state })
 
-installTableMenu(view, () => openPromptBar(view))
+installTableMenu(view, () => openPromptBar(view), () => isMarkdownFile(active.path))
 initImages({ view, docPath: () => active.path, save: () => save(false) })
 
 function source(): string {
@@ -204,8 +205,12 @@ async function activate(tab: Tab): Promise<void> {
   }
   showActive()
   scheduleSession()
-  if (mode !== 'reading') view.focus()
+  if (shownMode() !== 'reading') view.focus()
 }
+
+/** Commands that write or render Markdown: in any other file they do nothing and their buttons are greyed out. */
+const MARKDOWN_ONLY: readonly Command[] = ['toc', 'insertTable', 'insertImage', 'insertChart', 'exportHtml', 'exportPdf']
+const MARKDOWN_ONLY_BUTTONS = MARKDOWN_ONLY.map((c) => `#toolbar button[data-cmd="${c}"]`).join(', ') + ', #export-btn'
 
 /** Title bar, file name, status bar, explorer and tab strip follow the shown tab. */
 function showActive(): void {
@@ -213,6 +218,9 @@ function showActive(): void {
   window.api.setTitle(path ?? '')
   filenameEl.textContent = nameOf(active)
   statusPathEl.textContent = path ?? ''
+  // TOC, inserts and export write or render Markdown: notes only.
+  for (const b of document.querySelectorAll<HTMLButtonElement>(MARKDOWN_ONLY_BUTTONS)) b.disabled = !isMarkdownFile(path)
+  applyMode()
   sidebarFileOpened(path)
   updateDirty()
   drawTabs()
@@ -363,7 +371,7 @@ async function newFromTemplate(folder: string | null): Promise<void> {
   if (!doc) return
   await openDocument(doc.content, doc.path) // already saved where the user chose
   view.dispatch({ selection: { anchor: Math.min(doc.cursor, view.state.doc.length) }, scrollIntoView: true })
-  if (mode === 'reading') setMode('split')
+  if (shownMode() === 'reading') setMode('split')
   view.focus()
 }
 
@@ -374,7 +382,7 @@ async function openPath(path: string): Promise<void> {
   if (IMAGE_FILE.test(path)) return openImageViewer(path)
   const f = await window.api.readFile(path)
   if (f) await openDocument(f.content, f.path)
-  else await alertBox('Cannot open file', `${path}\n\nTendril opens text files up to 10 MB; this one looks binary, is too large or could not be read. Images open in the viewer.`)
+  else await alertBox('Cannot open file', `${path}\n\nTendril opens text files up to 10 MB; a .txt file or one without an extension must be plain ASCII. This one is not, looks binary, is too large or could not be read. Images open in the viewer.`)
 }
 
 /**
@@ -396,11 +404,16 @@ function replaceSource(next: string): void {
 // ---- Preview --------------------------------------------------------------
 
 function renderPreview(): void {
+  // Only Markdown has a preview: any other file stays in Edit view.
+  if (!isMarkdownFile(active.path)) {
+    previewEl.replaceChildren()
+    previewEl.classList.remove('paged')
+    return
+  }
   const top = previewEl.scrollTop
   const src = source()
-  const md = rendersMarkdown(active.path)
-  previewEl.innerHTML = md ? renderBody(src, imageEnv(active.path, 'preview')) : `<pre class="plain-text"><code>${escapeHtml(src)}</code></pre>`
-  previewEl.classList.toggle('paged', md && isPaged(src))
+  previewEl.innerHTML = renderBody(src, imageEnv(active.path, 'preview'))
+  previewEl.classList.toggle('paged', isPaged(src))
   previewEl.scrollTop = top
 }
 
@@ -426,7 +439,7 @@ previewEl.addEventListener('dblclick', (e) => {
   const block = chartAtLine(view.state, Number(fig.dataset.line))
   if (!block) return
   e.preventDefault()
-  if (mode === 'reading') setMode('split')
+  if (shownMode() === 'reading') setMode('split')
   view.dispatch({ selection: { anchor: block.from }, scrollIntoView: true })
   openChartDialog(view, block.from)
 })
@@ -434,7 +447,7 @@ previewEl.addEventListener('dblclick', (e) => {
 // Proportional scroll sync in split mode.
 let syncing = false
 function syncScroll(from: HTMLElement, to: HTMLElement): void {
-  if (syncing || mode !== 'split') return
+  if (syncing || shownMode() !== 'split') return
   const max = from.scrollHeight - from.clientHeight
   if (max <= 0) return
   syncing = true
@@ -444,24 +457,41 @@ function syncScroll(from: HTMLElement, to: HTMLElement): void {
 view.scrollDOM.addEventListener('scroll', () => syncScroll(view.scrollDOM, previewEl))
 previewEl.addEventListener('scroll', () => syncScroll(previewEl, view.scrollDOM))
 
+/** The view on screen: Split and Reading show rendered Markdown, so other files stay in Edit. */
+function shownMode(): Mode {
+  return isMarkdownFile(active.path) ? mode : 'edit'
+}
+
 function setMode(next: Mode): void {
+  if (next !== 'edit' && !isMarkdownFile(active.path)) return
   mode = next
-  panesEl.dataset.mode = next
+  applyMode()
+  if (next !== 'reading') view.focus()
+}
+
+/** Panes and the view buttons follow the shown tab: only Markdown offers Split and Reading. */
+function applyMode(): void {
+  const md = isMarkdownFile(active.path)
+  const shown = shownMode()
+  panesEl.dataset.mode = shown
   document.querySelectorAll<HTMLButtonElement>('#modes button').forEach((b) => {
-    b.classList.toggle('active', b.dataset.mode === next)
+    b.classList.toggle('active', b.dataset.mode === shown)
+    b.disabled = !md && b.dataset.mode !== 'edit'
   })
   syncLivePreview()
-  if (next !== 'reading') view.focus()
 }
 
 /** Live preview renders in place only in Edit view; Split already shows a preview. */
 function syncLivePreview(): void {
   if (!appearanceReady) return
   const on = settings().livePreview
-  const inPlace = on && mode === 'edit' && rendersMarkdown(active.path)
+  const md = isMarkdownFile(active.path)
+  const inPlace = on && shownMode() === 'edit' && md
   view.dispatch({ effects: livePreviewCompartment.reconfigure(inPlace ? livePreview((src) => previewImageSrc(active.path, src)) : []) })
   editorEl.classList.toggle('live-preview', inPlace)
-  $('#toolbar button[data-cmd="toggleLivePreview"]').classList.toggle('active', on)
+  const btn = $<HTMLButtonElement>('#toolbar button[data-cmd="toggleLivePreview"]')
+  btn.classList.toggle('active', on)
+  btn.disabled = !md
 }
 
 // ---- Commands -------------------------------------------------------------
@@ -473,7 +503,8 @@ function refreshStructure(src: string): string {
 
 async function save(as = false): Promise<boolean> {
   const tab = active
-  replaceSource(refreshStructure(source()))
+  // Only a Markdown file has a TOC: anything else is saved as typed.
+  if (isMarkdownFile(tab.path)) replaceSource(refreshStructure(source()))
   const content = source()
   const path = await window.api.saveFile(as ? null : tab.path, tab.eol === '\n' ? content : content.replace(/\n/g, tab.eol))
   if (!path) return false
@@ -487,8 +518,9 @@ async function save(as = false): Promise<boolean> {
   } else {
     showActive()
     if (pathChanged) {
-      // Relative images now resolve against the new folder, and a new extension may change how it previews.
-      syncLivePreview()
+      // Relative images now resolve against the new folder, and a new extension
+      // may change the language (Markdown, Python, …) and how it previews.
+      syncEditorConfig()
       renderPreview()
     }
   }
@@ -552,16 +584,16 @@ const commands: Record<Command, () => void | Promise<void>> = {
   toggleGraphPane: () => toggleGraphPane(),
   newFromTemplate: () => newFromTemplate(currentRoot()),
   insertImage: () => {
-    if (mode === 'reading') setMode('split')
+    if (shownMode() === 'reading') setMode('split')
     openImageDialog()
   },
   insertTable: () => {
-    if (mode === 'reading') setMode('split')
+    if (shownMode() === 'reading') setMode('split')
     openInsertTablePicker(view, $('#insert-table-btn'))
   },
   // Edits the chart under the cursor, or inserts a new one there.
   insertChart: () => {
-    if (mode === 'reading') setMode('split')
+    if (shownMode() === 'reading') setMode('split')
     openChartDialog(view)
   },
   toggleWrap: async () => {
@@ -605,6 +637,7 @@ function syncKeybindings(): void {
 function syncEditorConfig(): void {
   view.dispatch({
     effects: [
+      languageCompartment.reconfigure(languageFor(active.path)),
       themeCompartment.reconfigure(currentEditorTheme()),
       tabSizeCompartment.reconfigure(tabSizeConfig(currentTabSize())),
       wrapCompartment.reconfigure(currentWrap() ? EditorView.lineWrapping : [])
@@ -628,6 +661,7 @@ const FAILURE: Partial<Record<Command, string>> = {
 /** Run a command; its failure is shown, not swallowed. */
 async function run(cmd: Command | (() => void | Promise<void>), title = 'Something went wrong'): Promise<void> {
   try {
+    if (typeof cmd === 'string' && MARKDOWN_ONLY.includes(cmd) && !isMarkdownFile(active.path)) return
     if (typeof cmd === 'string') await commands[cmd]?.()
     else await cmd()
   } catch (err) {

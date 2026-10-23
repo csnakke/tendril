@@ -726,9 +726,6 @@ html[data-graph-pane="closed"] :is(#graph-pane, #graph-split) { display: none; }
 #preview.markdown-body :is(code, pre, kbd, samp, tt) { font-family: var(--editor-font); }
 /* Bold stays bolder than the text around it whatever weight the text is set to. */
 #preview.markdown-body :is(b, strong) { font-weight: bolder; }
-/* A non-Markdown text file (.env, .log, …) previews as itself, wrapped. */
-#preview pre.plain-text { white-space: pre-wrap; overflow-wrap: anywhere; }
-#preview.nowrap pre.plain-text { white-space: pre; overflow-wrap: normal; }
 #preview {
   overflow: auto;
   padding: 16px 20px 60vh;
@@ -818,6 +815,8 @@ html[data-graph-pane="closed"] :is(#graph-pane, #graph-split) { display: none; }
 #settings .kb-actions { display: flex; gap: 4px; }
 #settings .kb-actions button { padding: 4px; color: var(--muted); display: inline-flex; }
 #settings .kb-actions button:disabled { opacity: .35; cursor: default; }
+/* TOC in a file that is not Markdown. */
+#toolbar button:disabled { opacity: .35; cursor: default; pointer-events: none; }
 #settings .kb-actions .icon { width: 13px; height: 13px; }
 #settings .kb-warn { grid-column: 1 / -1; font-size: 11px; color: #e5534b; margin-top: -2px; }
 #settings kbd { font: inherit; font-size: 11px; padding: 1px 6px; border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 4px; background: var(--inset); }

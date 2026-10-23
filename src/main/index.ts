@@ -17,6 +17,8 @@ import { writeFileAtomic } from './fsx'
 import { buildGraph, disableGraph, enableGraph, forgetGraph, isGraphFolder, unwatchGraph } from './graph'
 import { loadSession, saveSession } from './session'
 import { MAX_TEXT_BYTES, readTextFile } from './textFile'
+import { lint } from './lint'
+import type { LintKind } from '../shared/lint'
 
 type Command = string
 
@@ -37,10 +39,15 @@ let sessionReady = false
 let quitting = false
 let quitAfterClose = false
 
-const MD_FILTERS = [{ name: 'Markdown', extensions: ['md', 'markdown', 'txt', 'html', 'htm'] }]
+const MD_FILTERS = [
+  { name: 'Markdown', extensions: ['md', 'markdown', 'txt', 'html', 'htm'] },
+  // Highlighted and linted in the editor (renderer/codeLanguage.ts).
+  { name: 'Python', extensions: ['py', 'pyw'] },
+  { name: 'JavaScript', extensions: ['js', 'mjs', 'cjs', 'jsx'] }
+]
 // Open also offers every file: anything that turns out to be text opens (see textFile.ts).
 const OPEN_FILTERS = [...MD_FILTERS, { name: 'All Files', extensions: ['*'] }]
-const NOT_TEXT = `Tendril opens text files: Markdown, plain text, HTML, config files like .env and the like, up to ${MAX_TEXT_BYTES / 1024 / 1024} MB. This one looks binary or is too large.`
+const NOT_TEXT = `Tendril opens text files: Markdown, plain text, HTML, source code, config files like .env and the like, up to ${MAX_TEXT_BYTES / 1024 / 1024} MB. A .txt file or one without an extension must be plain ASCII. This one is not, looks binary, or is too large.`
 
 function send(cmd: Command): void {
   win?.webContents.send('command', cmd)
@@ -541,6 +548,14 @@ handle('llm:complete', async (e, id: number, prompt: string, selection: string) 
 on('llm:cancel', () => llmRequests.forEach((ctl) => ctl.abort()))
 handle('llm:test', async () => llmTest(await loadSettings()))
 
+// ---- Linting -----------------------------------------------------------------
+
+const LINT_KINDS: readonly LintKind[] = ['python', 'javascript', 'jsx', 'commonjs']
+handle('lint:run', (_e, kind: LintKind, text: string) => {
+  if (!LINT_KINDS.includes(kind) || typeof text !== 'string') throw new Error('Nothing to lint')
+  return lint(kind, text)
+})
+
 // ---- Settings & fonts ------------------------------------------------------
 
 handle('settings:get', async () => redact(await loadSettings()))
@@ -747,7 +762,10 @@ app.on('open-file', (e, path) => {
 
 async function openInWindow(path: string): Promise<void> {
   const content = await readTextFile(path)
-  if (content === null) return // not text, or unreadable
+  if (content === null) {
+    if (win) await dialog.showMessageBox(win, { type: 'warning', message: 'Cannot open file', detail: `${path}\n\n${NOT_TEXT}` })
+    return
+  }
   allowAssetsIn(dirname(path))
   win?.webContents.send('file:opened', { path, content })
 }
