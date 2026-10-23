@@ -32,6 +32,7 @@ or opening Word. 🛡️
 - [3D charts](#-3d-charts)
 - [Images](#%EF%B8%8F-images)
 - [Explorer](#%EF%B8%8F-explorer)
+- [Code & text files](#-code--text-files)
 - [Tag graph](#%EF%B8%8F-tag-graph)
 - [Prompt Me — optional AI](#-prompt-me--optional-ai)
 - [PDF & HTML export](#%EF%B8%8F-pdf--html-export)
@@ -93,8 +94,9 @@ Tendril is a deliberate merge of the features people actually use in each tool:
 | 📊 | **Word-style tables** | Size-picker grid, right-click menu for merge, shading, alignment, banded rows — and it stays a valid GFM table |
 | 📈 | **3D bar & pie charts** | Word-style 3D charts from a ` ```chart ` block of YAML — a visual editor with live preview, every colour and angle adjustable, vector in the PDF |
 | 🖼️ | **Images** | Drop, paste or browse; copied into an `assets/` folder next to the note and linked relatively |
-| 🪟 | **Three views** | Edit, Split and Reading — plus optional in-place live preview while editing |
+| 🪟 | **Three views** | Edit, Split and Reading for Markdown notes — plus optional in-place live preview while editing |
 | ✏️ | **Multiple cursors** | Sublime-style: `Ctrl+D`, column carets, split selection into lines |
+| 🐍 | **Code & text files** | `.py` and `.js` files highlighted and linted (Ruff, ESLint) with one-click fixes; `.txt`, `.env` and other text files open as plain text ([details](#-code--text-files)) |
 | 🗂️ | **File explorer** | AppFlowy-style sidebar that follows the open file — search, templates, trash, reveal-in-file-manager |
 | 🕸️ | **3D tag graph** | Obsidian-style graph of a folder's notes and their tags — glowing, revolving, coloured by your theme |
 | 🤖 | **Prompt Me (optional AI)** | Inline prompt bar backed by a local LLM or OpenRouter — **off by default** |
@@ -291,6 +293,8 @@ the new keys, `↺` restores the default. On macOS read `Ctrl` as `⌘`.
 | Wrap text in Edit / Split view | `Alt+Z` |
 | Next / previous tab | `Ctrl+Tab` / `Ctrl+Shift+Tab` |
 
+> 💡 Split, Reading and live preview are for Markdown notes; any other file stays in Edit view.
+
 ### ✏️ Editing
 
 | Action | Shortcut |
@@ -301,6 +305,9 @@ the new keys, `↺` restores the default. On macOS read `Ctrl` as `⌘`.
 | Insert chart / edit the one under the cursor | `Ctrl+Alt+G` |
 | Next cell / previous cell (in a table) | `Tab` / `Shift+Tab` |
 | Indent with spaces / outdent (elsewhere; width in **Settings › Editor › Tab size**) | `Tab` / `Shift+Tab` |
+
+> 💡 The table of contents, inserts and export work in Markdown notes only — in a `.txt`,
+> `.py` or `.js` file their buttons are greyed out.
 
 Files open in **tabs** — drag to reorder, middle-click to close. Closing the window never
 asks: like Sublime Text's hot exit, every open tab and any unsaved text in it is kept and
@@ -533,6 +540,54 @@ The sidebar (`Ctrl+B`) is an AppFlowy-style file tree:
 
 > ⚠️ *Move to Trash* uses the real OS trash and the tree lists dotfiles too — mind the
 > `.git` folder when you are browsing a repository.
+
+---
+
+## 🧾 Code & text files
+
+Tendril is a Markdown editor first, but it opens any text file — and treats each one as
+what it is. **Only `.md` (and `.markdown`) files are Markdown**; nothing else is quietly
+rendered or rewritten as Markdown.
+
+| File | How it opens |
+|---|---|
+| 📝 `.md`, `.markdown`, a new untitled note | Markdown: highlighting, Edit / Split / Reading, live preview, TOC, tables, images, charts, export |
+| 🐍 `.py`, `.pyw` | Python: syntax highlighting + **Ruff** |
+| 🟨 `.js`, `.mjs`, `.cjs`, `.jsx` | JavaScript (CommonJS for `.cjs`, JSX for `.jsx`): syntax highlighting + **ESLint** |
+| 📄 `.txt`, `.html`, `.env`, `Makefile`, `.log`, … | Plain text — `# a comment` is not a heading |
+
+In anything that isn't a Markdown note the editor stays in **Edit view**, and the Markdown
+tools — TOC, Table, Image, Chart and Export, in the toolbar, menus, shortcuts and
+right-click menu — are greyed out; dropping or pasting an image is ignored. Saving never
+touches a non-Markdown file's text.
+
+### 🧹 Linting
+
+- **Python** is checked by **Ruff** with the rules `ruff check` runs by default (pyflakes and
+  pycodestyle errors: unused imports and variables, undefined names, `== None`, syntax errors).
+- **JavaScript** is checked by **ESLint** with its recommended rules; browser and Node
+  globals are both known.
+- Syntax errors show in **red**, rule findings in **yellow**, with a gutter marker and a wavy
+  underline. Hover one for the message and the rule (`ruff (F401)`, `eslint (no-undef)`);
+  where the tool offers a fix, a **Fix** button applies it.
+- Both run **inside Tendril** — Ruff as WebAssembly, ESLint as JavaScript — so nothing has
+  to be installed, and they load only when the first code file is opened.
+
+> ℹ️ Your project's own `pyproject.toml` / `ruff.toml` / `eslint.config.js` are not read yet:
+> the defaults above always apply.
+
+### 🚫 Files that will not open
+
+A file opens when it is **text**: valid UTF-8 (em dashes, curly quotes, accents and emoji are
+fine) with no binary data, up to **10 MB**. Otherwise *Cannot open file* says why:
+
+| Message | Meaning |
+|---|---|
+| *It contains binary data, so it is not a text file.* | The file has zero bytes in it |
+| *It is not UTF-8 text: it is binary, or saved in another encoding …* | Binary, or text saved as Latin-1 / UTF-16 — re-save it as UTF-8 |
+| *It is 10.5 MB; Tendril opens text files up to 10 MB.* | Too large for the editor |
+| *It is a PNG file, which is binary, not text.* | A known binary format (images open in the image viewer from the explorer) |
+| *It is a folder, not a file.* / *The file does not exist …* / *You do not have permission to read it.* | What it says |
 
 ---
 
@@ -803,6 +858,7 @@ flowchart TB
         M5["🧠 LLM client"]
         M6["🖨️ PDF printer"]
         M7["🕸️ Graph scanner<br/>marked folders only"]
+        M8["🧹 Linters<br/>ESLint · Ruff (WASM)"]
     end
     subgraph P ["🌉 Preload — contextBridge"]
         P1["window.api<br/>typed IPC surface"]
@@ -851,6 +907,7 @@ assumption:
 | 🚫 | Debug hooks that run code in the page are **refused in packaged builds** |
 | 📈 | **Charts are SVG built from escaped text and colours checked against `#rrggbb`** — nothing in a chart block can add markup or attributes — and they still pass through the sanitizer |
 | 🎨 | A note's own `<style>` block is kept — CSS runs nothing — and imported themes are stripped to colour variables |
+| 🧹 | **Linters run in the main process, in-process** — ESLint compiles its rule schemas with `new Function`, which the window's CSP refuses, so they stay out of the window; nothing is spawned and the editor only ever sends the text it shows |
 | 🕸️ | The **graph scans only folders you marked** yourself from the explorer's menu — the window has no channel to mark one — never follows symlinks, and caps file size and count |
 
 Found something? Please open an issue. 🐛
@@ -877,18 +934,22 @@ src/
 │   ├── fsx.ts         atomic writes
 │   ├── settings.ts    settings.json + keychain-encrypted key
 │   ├── graph.ts       tag-graph scanner, folder marker, watcher
+│   ├── lint.ts        ESLint + Ruff (WASM) for .js / .py files
+│   ├── textFile.ts    what opens: text detection and the reason a file is refused
 │   └── llm.ts         OpenAI-compatible streaming client
 ├── preload/       🌉  contextBridge — the typed window.api surface
 ├── renderer/      🖼️  the whole UI
 │   ├── markdown.ts    markdown-it pipeline, HTML/PDF document shells
 │   ├── sanitize.ts    the sanitizer every rendered note passes through
 │   ├── toc.ts         TOC build / insert / refresh
+│   ├── codeLanguage.ts  language per file: Markdown, Python, JavaScript or plain text
+│   ├── codeLint.ts    lint results → editor diagnostics and Fix actions
 │   ├── tables/        model, editor, context menu, size picker
 │   ├── charts/        3D bar/pie model, SVG renderer, markdown-it plugin, chart editor
 │   ├── themes/        builtin palettes, Obsidian import, graph colours
 │   ├── graph/         3D graph view, sidebar pane, zoomed overlay, details card
 │   └── templates/     built-in note and report templates
-└── shared/        ⌨️  shared by both processes: keybindings, front matter, graph model
+└── shared/        ⌨️  shared by both processes: keybindings, front matter, graph model, lint types
 
 templates/         📦  starter pack: Notes.md, Reports.md and their reference README
 tests/             🧪  vitest unit tests (charts model, SVG renderer, pipeline, sanitizer)
@@ -904,6 +965,9 @@ install.sh         🐳  one-command installer: builds in a throwaway container 
   X11, Windows and macOS get all eight.
 - **Anything a note can express must stay valid Markdown.** If a feature cannot survive a
   round-trip through GitHub's renderer, it does not belong in the file.
+- **Markdown features are for Markdown files only.** `isMarkdownFile()` (`renderer/paths.ts`)
+  decides; a new command that writes or renders Markdown goes in `MARKDOWN_ONLY`
+  (`renderer/main.ts`), which disables it everywhere else.
 - **Charts are static SVG built in `charts/svg.ts`.** Never use `fill-opacity`,
   `stroke-opacity` or rgba colours there: Chromium's PDF output leaks that alpha into the
   next gradient fill, which then prints see-through. Wrap translucent shapes in
