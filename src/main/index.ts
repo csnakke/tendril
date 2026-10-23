@@ -16,7 +16,7 @@ import { complete as llmComplete, test as llmTest } from './llm'
 import { writeFileAtomic } from './fsx'
 import { buildGraph, disableGraph, enableGraph, forgetGraph, isGraphFolder, unwatchGraph } from './graph'
 import { loadSession, saveSession } from './session'
-import { MAX_TEXT_BYTES, readTextFile } from './textFile'
+import { readTextFile } from './textFile'
 import { lint } from './lint'
 import type { LintKind } from '../shared/lint'
 
@@ -47,7 +47,11 @@ const MD_FILTERS = [
 ]
 // Open also offers every file: anything that turns out to be text opens (see textFile.ts).
 const OPEN_FILTERS = [...MD_FILTERS, { name: 'All Files', extensions: ['*'] }]
-const NOT_TEXT = `Tendril opens text files: Markdown, plain text, HTML, source code, config files like .env and the like, up to ${MAX_TEXT_BYTES / 1024 / 1024} MB. A .txt file or one without an extension must be plain ASCII. This one is not, looks binary, or is too large.`
+
+/** The one message for a file that cannot be opened, saying which file and why. */
+function cannotOpen(path: string, reason: string): Promise<unknown> {
+  return win ? dialog.showMessageBox(win, { type: 'warning', message: 'Cannot open file', detail: `${basename(path)}\n\n${reason}` }) : Promise.resolve()
+}
 
 function send(cmd: Command): void {
   win?.webContents.send('command', cmd)
@@ -290,20 +294,21 @@ handle('file:open', async () => {
   const r = await dialog.showOpenDialog(win!, { properties: ['openFile'], filters: OPEN_FILTERS })
   if (r.canceled || r.filePaths.length === 0) return null
   const path = r.filePaths[0]
-  const content = await readTextFile(path)
-  if (content === null) {
-    await dialog.showMessageBox(win!, { type: 'warning', message: 'Cannot open file', detail: NOT_TEXT })
+  const read = await readTextFile(path)
+  if ('error' in read) {
+    await cannotOpen(path, read.error)
     return null
   }
   allowAssetsIn(dirname(path))
-  return { path, content }
+  return { path, content: read.text }
 })
 
+/** The file's text, or why it cannot be opened (never a binary loaded into the editor). */
 handle('file:read', async (_e, path: string) => {
-  const content = await readTextFile(path) // never load binaries into the editor
-  if (content === null) return null
+  const read = await readTextFile(path)
+  if ('error' in read) return { path, error: read.error }
   allowAssetsIn(dirname(path))
-  return { path, content }
+  return { path, content: read.text }
 })
 
 handle('file:save', async (_e, path: string | null, content: string, suggested?: string) => {
@@ -761,13 +766,13 @@ app.on('open-file', (e, path) => {
 })
 
 async function openInWindow(path: string): Promise<void> {
-  const content = await readTextFile(path)
-  if (content === null) {
-    if (win) await dialog.showMessageBox(win, { type: 'warning', message: 'Cannot open file', detail: `${path}\n\n${NOT_TEXT}` })
+  const read = await readTextFile(path)
+  if ('error' in read) {
+    await cannotOpen(path, read.error)
     return
   }
   allowAssetsIn(dirname(path))
-  win?.webContents.send('file:opened', { path, content })
+  win?.webContents.send('file:opened', { path, content: read.text })
 }
 
 app.whenReady().then(async () => {

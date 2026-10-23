@@ -41,6 +41,11 @@ export interface OpenedFile {
   path: string
   content: string
 }
+/** A file that could not be opened, and why (binary, too large, missing, …), in a sentence. */
+export interface UnreadableFile {
+  path: string
+  error: string
+}
 
 export interface PdfOptions {
   /** Paged (report) documents get wider top/bottom margins for their cover and breaks. */
@@ -142,7 +147,7 @@ const api = {
   saveTheme: (def: ThemeDef): Promise<void> => ipcRenderer.invoke('themes:save', def),
   uninstallTheme: (id: string): Promise<void> => ipcRenderer.invoke('themes:uninstall', id),
   openFile: (): Promise<OpenedFile | null> => ipcRenderer.invoke('file:open'),
-  readFile: (path: string): Promise<OpenedFile | null> => ipcRenderer.invoke('file:read', path),
+  readFile: (path: string): Promise<OpenedFile | UnreadableFile> => ipcRenderer.invoke('file:read', path),
   /** Write `content` to `path`; with no path, ask where (starting at `suggested`). Null when cancelled. */
   saveFile: (path: string | null, content: string, suggested?: string): Promise<string | null> =>
     ipcRenderer.invoke('file:save', path, content, suggested),

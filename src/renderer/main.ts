@@ -330,7 +330,8 @@ async function restoreSession(): Promise<void> {
     const back: Tab[] = []
     let shown: Tab | null = null
     for (const [i, st] of (s?.tabs ?? []).entries()) {
-      const disk = st.path ? await window.api.readFile(st.path) : null
+      const read = st.path ? await window.api.readFile(st.path) : null
+      const disk = read && 'content' in read ? read : null
       let tab: Tab
       if (st.content === undefined) {
         if (!disk) continue // a saved file that has since gone: nothing of the user's is lost
@@ -381,8 +382,8 @@ async function openPath(path: string): Promise<void> {
   if (open) return activate(open)
   if (IMAGE_FILE.test(path)) return openImageViewer(path)
   const f = await window.api.readFile(path)
-  if (f) await openDocument(f.content, f.path)
-  else await alertBox('Cannot open file', `${path}\n\nTendril opens text files up to 10 MB; a .txt file or one without an extension must be plain ASCII. This one is not, looks binary, is too large or could not be read. Images open in the viewer.`)
+  if ('content' in f) await openDocument(f.content, f.path)
+  else await alertBox('Cannot open file', `${path.split(/[\\/]/).pop()}\n\n${f.error}`)
 }
 
 /**
