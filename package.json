@@ -17,7 +17,6 @@
     "build:linux": "electron-vite build && electron-builder --linux",
     "build:win": "electron-vite build && electron-builder --win",
     "build:mac": "electron-vite build && electron-builder --mac",
-    "test": "vitest run",
     "import-theme": "node scripts/import-obsidian-theme.js",
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
@@ -99,10 +98,8 @@
     "electron": "^44.4.3",
     "electron-builder": "^26.15.3",
     "electron-vite": "^5.0.0",
-    "jsdom": "^30.1.1",
     "typescript": "^5.6.0",
-    "vite": "^7.0.0",
-    "vitest": "^5.0.1"
+    "vite": "^7.0.0"
   },
   "homepage": "https://github.com/csnakke/tendril",
   "desktopName": "tendril.desktop"
