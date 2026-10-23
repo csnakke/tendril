@@ -31,6 +31,11 @@ let forceClose = false
 // Set once the renderer has asked for the session, i.e. it is up and able to
 // answer 'hotExit'. Before that (or after a crash) the window just closes.
 let sessionReady = false
+// app.quit() (Cmd+Q, Quit menu) is cancelled by the hot-exit close below, which
+// holds the window open while the renderer saves. Remember the request so the
+// quit can be resumed once the window really closes.
+let quitting = false
+let quitAfterClose = false
 
 const MD_FILTERS = [{ name: 'Markdown', extensions: ['md', 'markdown', 'txt', 'html', 'htm'] }]
 // Open also offers every file: anything that turns out to be text opens (see textFile.ts).
@@ -182,6 +187,8 @@ function createWindow(): void {
   win.on('close', (e) => {
     if (forceClose || !sessionReady || win!.webContents.isCrashed()) return
     e.preventDefault()
+    quitAfterClose = quitting
+    quitting = false
     send('hotExit')
   })
   win.webContents.on('render-process-gone', () => (sessionReady = false))
@@ -577,6 +584,9 @@ on('state:title', (_e, title: string) => {
 on('window:close', () => {
   forceClose = true
   win?.close()
+  // macOS keeps the process alive after its last window closes: finish a pending quit.
+  if (quitAfterClose) app.quit()
+  quitAfterClose = false
 })
 on('window:requestClose', () => win?.close())
 on('window:minimize', () => win?.minimize())
@@ -751,6 +761,10 @@ app.whenReady().then(async () => {
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
   })
+})
+
+app.on('before-quit', () => {
+  quitting = true
 })
 
 app.on('window-all-closed', () => {
