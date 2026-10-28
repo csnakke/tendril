@@ -1,6 +1,5 @@
-import { app, BrowserWindow, dialog, ipcMain, Menu, nativeImage, net, protocol, shell, type IpcMainEvent, type IpcMainInvokeEvent, type MenuItemConstructorOptions, type WebFrameMain } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain, Menu, net, protocol, shell, type IpcMainEvent, type IpcMainInvokeEvent, type MenuItemConstructorOptions, type WebFrameMain } from 'electron'
 import { execFile } from 'node:child_process'
-import { createHash } from 'node:crypto'
 import { promises as fs } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, basename, dirname, extname, isAbsolute, relative, resolve } from 'node:path'
@@ -659,98 +658,6 @@ on('menu:popup', (_e, x: number, y: number) => {
   Menu.getApplicationMenu()?.popup({ window: win!, x: Math.round(x), y: Math.round(y) })
 })
 
-// ---- AppImage desktop integration ------------------------------------------
-
-/** Append a tEXt chunk to a PNG buffer (used for freedesktop thumbnail metadata). */
-function pngWithText(png: Buffer, fields: Record<string, string>): Buffer {
-  const crcTable = Array.from({ length: 256 }, (_, n) => {
-    let c = n
-    for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1
-    return c >>> 0
-  })
-  const crc = (buf: Buffer): number => {
-    let c = 0xffffffff
-    for (const b of buf) c = crcTable[(c ^ b) & 0xff] ^ (c >>> 8)
-    return (c ^ 0xffffffff) >>> 0
-  }
-  const chunks = Object.entries(fields).map(([k, v]) => {
-    const data = Buffer.concat([Buffer.from('tEXt'), Buffer.from(k, 'latin1'), Buffer.of(0), Buffer.from(v, 'latin1')])
-    const len = Buffer.alloc(4)
-    len.writeUInt32BE(data.length - 4)
-    const c = Buffer.alloc(4)
-    c.writeUInt32BE(crc(data))
-    return Buffer.concat([len, data, c])
-  })
-  // Insert right after the IHDR chunk (8-byte signature + 4 len + 4 type + 13 data + 4 crc).
-  const at = 8 + 4 + 4 + 13 + 4
-  return Buffer.concat([png.subarray(0, at), ...chunks, png.subarray(at)])
-}
-
-/**
- * A bare AppImage has no launcher entry, so GNOME/KDE show a generic icon for
- * the window and the file. Register one under ~/.local/share pointing at the
- * current AppImage path (rewritten whenever the path changes), and write
- * freedesktop thumbnails so file managers show the icon on the file itself.
- */
-async function integrateAppImage(): Promise<void> {
-  const image = process.env['APPIMAGE']
-  if (process.platform !== 'linux' || !image) return
-  try {
-    const share = process.env['XDG_DATA_HOME'] || join(homedir(), '.local', 'share')
-    const themeDir = join(share, 'icons', 'hicolor')
-    const iconDir = join(themeDir, '512x512', 'apps')
-    const appDir = join(share, 'applications')
-    await fs.mkdir(iconDir, { recursive: true })
-    await fs.mkdir(appDir, { recursive: true })
-
-    const icon = nativeImage.createFromPath(join(app.getAppPath(), 'icons/icon.png'))
-    await fs.writeFile(join(iconDir, 'tendril.png'), icon.resize({ width: 512, height: 512 }).toPNG(), { mode: 0o644 })
-    // A stale icon-theme.cache hides new icons; rebuild it or force a rescan.
-    await new Promise<void>((resolve) => {
-      execFile('gtk-update-icon-cache', ['-f', '-t', themeDir], () => resolve())
-    })
-    const now = new Date()
-    await fs.utimes(themeDir, now, now).catch(() => {})
-
-    // Desktop Entry spec: inside a quoted argument these are escaped, and a
-    // path with a newline in it cannot be written down at all.
-    if (/[\r\n]/.test(image)) return
-    const exec = image.replace(/(["`$\\])/g, '\\$1')
-    const entry = [
-      '[Desktop Entry]',
-      'Type=Application',
-      'Name=Tendril',
-      'Comment=Markdown editor with a Word-like table of contents',
-      `Exec="${exec}" %F`,
-      'Icon=tendril',
-      'Terminal=false',
-      'Categories=Office;TextEditor;',
-      'MimeType=text/markdown;',
-      'StartupWMClass=tendril',
-      ''
-    ].join('\n')
-    const file = join(appDir, 'tendril.desktop')
-    const current = await fs.readFile(file, 'utf8').catch(() => '')
-    if (current !== entry) await fs.writeFile(file, entry, 'utf8')
-
-    // Thumbnails for the AppImage file itself (freedesktop thumbnail spec).
-    const uri = pathToFileURL(image).href
-    const mtime = String(Math.floor((await fs.stat(image)).mtimeMs / 1000))
-    const hash = createHash('md5').update(uri).digest('hex')
-    const cache = process.env['XDG_CACHE_HOME'] || join(homedir(), '.cache')
-    for (const [dir, size] of [['normal', 128], ['large', 256], ['x-large', 512], ['xx-large', 1024]] as const) {
-      const out = join(cache, 'thumbnails', dir)
-      await fs.mkdir(out, { recursive: true })
-      const png = pngWithText(icon.resize({ width: size, height: size }).toPNG(), { 'Thumb::URI': uri, 'Thumb::MTime': mtime })
-      await fs.writeFile(join(out, `${hash}.png`), png, { mode: 0o600 })
-    }
-    // Drop any earlier "failed thumbnail" marker so the file manager retries.
-    await fs.rm(join(cache, 'thumbnails', 'fail', 'gnome-thumbnail-factory', `${hash}.png`), { force: true })
-  } catch {
-    /* integration is best-effort */
-  }
-}
-
 // ---- Lifecycle -------------------------------------------------------------
 
 // Wayland app id / X11 WM_CLASS must match the desktop file for the icon to show.
@@ -777,7 +684,6 @@ async function openInWindow(path: string): Promise<void> {
 
 app.whenReady().then(async () => {
   protocol.handle('asset', serveAsset)
-  void integrateAppImage()
   keybindings = (await loadSettings()).keybindings
   buildMenu()
   createWindow()

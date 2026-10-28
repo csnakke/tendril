@@ -215,15 +215,27 @@ flowchart LR
 
 | | Result | Start it |
 |---|---|---|
-| 🐧 Linux | `~/Applications/Tendril.AppImage` | `~/Applications/Tendril.AppImage` |
+| 🐧 Linux | `~/.local/share/tendril` + an app-menu entry | Click **Tendril** in your app menu, or run `tendril` |
 | 🍎 macOS | `~/Applications/Tendril.app` (ad-hoc signed for your Mac) | `open ~/Applications/Tendril.app` |
+
+🐧 On Linux there is no AppImage and no FUSE: the installer writes a standard
+`.desktop` launcher entry and icon under `~/.local/share`, which every desktop (GNOME, KDE,
+XFCE, Cinnamon, MATE, …) picks up. Right-click **Tendril** in the menu to add it to
+favourites or pin it to the panel — on GNOME the installer pins it to the dock for you
+(`TENDRIL_PIN=0` to skip). `.md` files get **Open with Tendril**.
 
 - 🧩 **Needs:** Docker (Docker Desktop, OrbStack or Colima on macOS). The OS and CPU (x64 / arm64) are detected automatically.
 - 🧹 The Node image is removed afterwards — unless it was already on your machine, then it is left alone.
-- ⚙️ **Options:** `TENDRIL_INSTALL_DIR` (where the app goes), `TENDRIL_REF` (branch or tag), `TENDRIL_REPO`, `TENDRIL_NODE_IMAGE` — e.g.
+- ⚙️ **Options:** `TENDRIL_INSTALL_DIR` (folder the app goes in), `TENDRIL_REF` (branch or tag), `TENDRIL_REPO` (git URL, or a local folder to build your working copy), `TENDRIL_NODE_IMAGE`, `TENDRIL_PIN` — e.g.
   `curl -fsSL …/install.sh | TENDRIL_REF=v0.2.0 bash`
-- 🐧 The AppImage needs FUSE 2 to start: `sudo apt install libfuse2t64` (the installer warns if it is missing).
-- 🔄 **Update:** run the same command again. **Uninstall:** delete the app.
+- 🛡️ **Sandbox (Linux):** Electron sandboxes the window with user namespaces. Where the system
+  blocks them (Ubuntu 24.04+, hardened kernels, some RHEL setups) the installer asks for `sudo`
+  **once** to install Electron's setuid sandbox helper as `/usr/local/lib/tendril/chrome-sandbox`.
+  The launcher checks at every start which one works, so a later system change never stops the
+  app; if neither is available it still starts, without the sandbox, and tells you to rerun the installer.
+- 🔄 **Update:** run the same command again.
+- 🗑️ **Uninstall:** `curl -fsSL …/install.sh | bash -s -- --uninstall` — removes the app, menu
+  entry, icon, `tendril` command and sandbox helper; your settings stay.
 
 ### 🔨 Build from source
 
@@ -239,7 +251,7 @@ Then pick what you want to do:
 npm run dev            # hot-reloading development app
 npm run typecheck      # tsc --noEmit, strict
 npm run compile        # build main/preload/renderer → out/
-npm run build:linux    # → dist/Tendril-<version>-linux-x86_64.AppImage
+npm run build:linux    # → dist/linux-unpacked/tendril (dist/linux-arm64-unpacked/ on arm64)
 npm run build:win      # → dist/Tendril-<version>-win-x64.exe
 npm run build:mac      # → dist/Tendril-<version>-mac-<arch>.zip
 
@@ -257,7 +269,8 @@ npm install && npm run compile && npm run build:linux    # For x86_64 bit Linux
 | `Cannot find module …` | Half-finished or stale install | `rm -rf node_modules && npm ci` |
 | A chart shows *Chart: …* in red | The ` ```chart ` YAML could not be read (bad indentation, unknown `type`, no `data`) | Fix the line it names, or double-click it and let the chart editor rewrite it |
 | Electron aborts with a **SUID sandbox** error on Linux | Dev-machine `chrome-sandbox` permissions | `npx electron --no-sandbox .`, or `sudo chown root:root node_modules/electron/dist/chrome-sandbox && sudo chmod 4755 …` |
-| The AppImage will not start | Missing FUSE | `sudo apt install libfuse2` |
+| A notification says Tendril is running **without its sandbox** | The system blocks user namespaces and the sandbox helper is missing (no `sudo` during install) | Run the installer again and enter your password when asked |
+| Tendril is not in the app menu right after installing | The desktop has not rescanned yet | Log out and back in (or restart the panel) |
 
 ---
 
@@ -928,7 +941,7 @@ npm run build:linux  # | build:win | build:mac → dist/
 ```
 src/
 ├── main/          ⚙️  Electron main — files, settings, explorer, fonts, themes, LLM, PDF
-│   ├── index.ts       window, menu, IPC, asset:// scheme, AppImage integration
+│   ├── index.ts       window, menu, IPC, asset:// scheme
 │   ├── fsx.ts         atomic writes
 │   ├── settings.ts    settings.json + keychain-encrypted key
 │   ├── graph.ts       tag-graph scanner, folder marker, watcher
@@ -951,8 +964,8 @@ src/
 
 templates/         📦  starter pack: Notes.md, Reports.md and their reference README
 icons/             🎨  application icon and the image at the top of this file
-scripts/           🔧  build helpers (AppImage thumbnails, Obsidian theme pre-import)
-install.sh         🐳  one-command installer: builds in a throwaway container (Linux, macOS)
+scripts/           🔧  build helpers (Obsidian theme pre-import)
+install.sh         🐳  one-command installer: builds in a throwaway container, adds the launcher entry (Linux, macOS)
 ```
 
 ### 🧭 Notes for contributors

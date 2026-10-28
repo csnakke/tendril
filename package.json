@@ -26,7 +26,6 @@
     "directories": {
       "output": "dist"
     },
-    "afterAllArtifactBuild": "scripts/appimage-thumbnails.js",
     "files": [
       "out/**/*",
       "package.json",
@@ -34,18 +33,9 @@
     ],
     "linux": {
       "target": [
-        "AppImage"
+        "dir"
       ],
       "category": "Office",
-      "maintainer": "csnakke <rahuul.naair@gmail.com>",
-      "desktop": {
-        "entry": {
-          "Name": "Tendril",
-          "MimeType": "text/markdown;",
-          "StartupWMClass": "tendril"
-        }
-      },
-      "syncDesktopName": true,
       "executableName": "tendril"
     },
     "win": {
