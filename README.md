@@ -94,7 +94,7 @@ Tendril is a deliberate merge of the features people actually use in each tool:
 | 📊 | **Word-style tables** | Size-picker grid, right-click menu for merge, shading, alignment, banded rows — and it stays a valid GFM table |
 | 📈 | **3D bar & pie charts** | Word-style 3D charts from a ` ```chart ` block of YAML — a visual editor with live preview, every colour and angle adjustable, vector in the PDF |
 | 🖼️ | **Images** | Drop, paste or browse; copied into an `assets/` folder next to the note and linked relatively |
-| 🪟 | **Three views** | Edit, Split and Reading for Markdown notes — plus optional in-place live preview while editing |
+| 🪟 | **Three views** | Edit, Split and Reading for Markdown notes — with Edit always rendering Markdown in place as you type |
 | ✏️ | **Multiple cursors** | Sublime-style: `Ctrl+D`, column carets, split selection into lines |
 | 🐍 | **Code & text files** | `.py` and `.js` files highlighted and linted (Ruff, ESLint) with one-click fixes; `.txt`, `.env` and other text files open as plain text ([details](#-code--text-files)) |
 | 🗂️ | **File explorer** | AppFlowy-style sidebar that follows the open file — search, templates, trash, reveal-in-file-manager |
@@ -301,7 +301,6 @@ the new keys, `↺` restores the default. On macOS read `Ctrl` as `⌘`.
 | Edit / Split / Reading | `Ctrl+1` / `Ctrl+2` / `Ctrl+3` |
 | Toggle sidebar | `Ctrl+B` |
 | Toggle graph pane | `Ctrl+Shift+G` |
-| Live preview in Edit view | `Ctrl+Shift+E` |
 | Wrap text in Edit / Split view | `Alt+Z` |
 | Next / previous tab | `Ctrl+Tab` / `Ctrl+Shift+Tab` |
 

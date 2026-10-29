@@ -134,7 +134,6 @@ function menuTemplate(keys: Record<string, string>): MenuItemConstructorOptions[
         { type: 'separator' },
         { label: 'Toggle Sidebar', accelerator: acc('toggleSidebar'), click: () => send('toggleSidebar') },
         { label: 'Toggle Graph Pane', accelerator: acc('toggleGraphPane'), click: () => send('toggleGraphPane') },
-        { label: 'Live Preview in Edit View', accelerator: acc('toggleLivePreview'), click: () => send('toggleLivePreview') },
         { label: 'Wrap Text', accelerator: acc('toggleWrap'), click: () => send('toggleWrap') },
         { type: 'separator' },
         { label: 'Next Tab', accelerator: acc('nextTab'), click: () => send('nextTab') },

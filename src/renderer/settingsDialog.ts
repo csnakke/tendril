@@ -18,7 +18,6 @@ export function openSettings(): void {
   syncBorder()
   authorInput.value = settings().author
   assetsInput.value = settings().assetsFolder
-  livePreviewInput.checked = settings().livePreview
   wrapTextInput.checked = settings().wrapText
   tabSizeInput.value = String(settings().tabSize)
   syncSizes()
@@ -57,11 +56,6 @@ dialog.querySelectorAll<HTMLButtonElement>('.st-nav button').forEach((b) => {
 })
 
 // ---- Editor ---------------------------------------------------------------------
-
-const livePreviewInput = $<HTMLInputElement>('#live-preview')
-livePreviewInput.addEventListener('change', () => {
-  void updateSettings({ livePreview: livePreviewInput.checked }).then(() => document.dispatchEvent(new CustomEvent('settings-changed')))
-})
 
 const wrapTextInput = $<HTMLInputElement>('#wrap-text')
 wrapTextInput.addEventListener('change', () => {

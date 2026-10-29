@@ -483,17 +483,12 @@ function applyMode(): void {
   syncLivePreview()
 }
 
-/** Live preview renders in place only in Edit view; Split already shows a preview. */
+/** Markdown renders in place in Edit view, always; Split already shows a preview beside it. */
 function syncLivePreview(): void {
   if (!appearanceReady) return
-  const on = settings().livePreview
-  const md = isMarkdownFile(active.path)
-  const inPlace = on && shownMode() === 'edit' && md
+  const inPlace = shownMode() === 'edit' && isMarkdownFile(active.path)
   view.dispatch({ effects: livePreviewCompartment.reconfigure(inPlace ? livePreview((src) => previewImageSrc(active.path, src)) : []) })
   editorEl.classList.toggle('live-preview', inPlace)
-  const btn = $<HTMLButtonElement>('#toolbar button[data-cmd="toggleLivePreview"]')
-  btn.classList.toggle('active', on)
-  btn.disabled = !md
 }
 
 // ---- Commands -------------------------------------------------------------
@@ -601,10 +596,6 @@ const commands: Record<Command, () => void | Promise<void>> = {
   toggleWrap: async () => {
     await updateSettings({ wrapText: !settings().wrapText })
     syncEditorConfig()
-  },
-  toggleLivePreview: async () => {
-    await updateSettings({ livePreview: !settings().livePreview })
-    syncLivePreview()
   }
 }
 

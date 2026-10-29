@@ -29,8 +29,6 @@ export interface Settings {
   /** ThemeDef id: 'builtin:<slug>' or 'obsidian:<owner>/<repo>'. */
   themeId: string
   iconSet: 'lucide' | 'tabler' | 'phosphor' | 'remix' | 'iconoir'
-  /** Render Markdown in place in Edit view (raw source on the cursor line). */
-  livePreview: boolean
   /** Soft-wrap long lines in the editor (Edit and Split view) and in a plain-text preview. */
   wrapText: boolean
   /** Columns per Tab press; Tab inserts spaces (soft tabs). */
@@ -89,7 +87,6 @@ export const DEFAULT_SETTINGS: Settings = {
   graphPaneHeight: 260,
   themeId: 'builtin:catppuccin',
   iconSet: 'lucide',
-  livePreview: true,
   wrapText: true,
   tabSize: 4,
   author: '',

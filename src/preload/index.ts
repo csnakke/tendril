@@ -26,7 +26,6 @@ export type Command =
   | 'settings'
   | 'toggleSidebar'
   | 'toggleGraphPane'
-  | 'toggleLivePreview'
   | 'toggleWrap'
   | 'newFromTemplate'
   | 'hotExit'
@@ -73,7 +72,6 @@ export interface Settings {
   graphPaneHeight: number
   themeId: string
   iconSet: 'lucide' | 'tabler' | 'phosphor' | 'remix' | 'iconoir'
-  livePreview: boolean
   wrapText: boolean
   tabSize: number
   author: string
