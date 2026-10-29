@@ -44,7 +44,8 @@ const statusPathEl = $('#status-path')
 
 // The view the user picked. A file that is not Markdown is always shown in
 // Edit view (see shownMode); the pick comes back with the next Markdown tab.
-let mode: Mode = 'split'
+// A new file always starts in Edit view (see newTab, newFromTemplate).
+let mode: Mode = 'edit'
 // Settings are loaded (initAppearance); until then editor config uses defaults.
 let appearanceReady = false
 const currentTabSize = (): number => (appearanceReady ? settings().tabSize : 4)
@@ -57,7 +58,7 @@ const WELCOME = `# Untitled
 
 ## Getting started
 
-Type Markdown on the left; the preview on the right updates live.
+Type Markdown here. **Ctrl+2** shows a live preview side by side.
 
 ### Table of contents
 
@@ -248,6 +249,7 @@ async function newTab(): Promise<void> {
   const tab = makeTab({ content: '', path: null })
   insertTab(tab)
   await activate(tab)
+  setMode('edit')
 }
 
 /** Close a tab, asking first when it has unsaved changes. The last tab is replaced by a blank one. */
@@ -372,8 +374,7 @@ async function newFromTemplate(folder: string | null): Promise<void> {
   if (!doc) return
   await openDocument(doc.content, doc.path) // already saved where the user chose
   view.dispatch({ selection: { anchor: Math.min(doc.cursor, view.state.doc.length) }, scrollIntoView: true })
-  if (shownMode() === 'reading') setMode('split')
-  view.focus()
+  setMode('edit')
 }
 
 /** Open a file from the sidebar (or anywhere else that has a path). */
@@ -785,7 +786,7 @@ const sharedCss = document.createElement('style')
 sharedCss.textContent = PROPERTIES_CSS + PAGES_CSS + TABLE_CSS + CHART_CSS
 document.head.appendChild(sharedCss)
 
-setMode('split')
+setMode('edit')
 renderPreview()
 updateDirty()
 drawTabs()
