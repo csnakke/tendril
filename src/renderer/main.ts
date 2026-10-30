@@ -12,7 +12,7 @@ import { livePreview } from './livePreview'
 import { multiCursor, multiCursorKeymap } from './multiCursor'
 import { formatAccelerator, resolveBindings } from '../shared/keybindings'
 import { openSettings } from './settingsDialog'
-import { initSidebar, sidebarFileOpened, toggleSidebar } from './sidebar'
+import { initSidebar, setRoot, sidebarFileOpened, toggleSidebar } from './sidebar'
 import { mountIcons } from './icons/index'
 import { fetchObsidianPalette } from './themes/settings'
 import { pickTemplate } from './templatePicker'
@@ -24,8 +24,14 @@ import { embeddedImageEnv, imageDropPaste, imageEnv, initImages, openImageDialog
 import { openImageViewer } from './imageViewer'
 import { linkPaste } from './linkPaste'
 import { openPromptBar, promptStream, stopPrompt } from './promptBar'
-import { IMAGE_FILE, isMarkdownFile } from './paths'
+import { IMAGE_FILE, dirOf, isMarkdownFile } from './paths'
 import { initGraphPane, toggleGraphPane } from './graph/pane'
+import { documentShown, initTerminal, terminalMaximized, toggleTerminal } from './terminal'
+// The explorer's Remote section (SSH), ssh's password dialog and the transfers chip wire themselves up.
+import './remote'
+import './sshPrompt'
+import { decorateCodeBlocks, setDocKey } from './codeRun'
+import { openAppMenu } from './appMenu'
 import { openChartDialog } from './charts/dialog'
 import { chartAtLine } from './charts/editor'
 import { softTabKeymap, tabSizeConfig } from './softTab'
@@ -161,6 +167,8 @@ function makeTab(o: { content: string; path: string | null; saved?: string; eol?
 
 // The welcome text is not the user's work: it is never kept or asked about.
 let active = makeTab({ content: WELCOME, path: null })
+// Run on a code block asks once per note: the note is its file, or its tab while unsaved.
+setDocKey(() => active.path ?? `tab:${active.id}`)
 tabs.push(active)
 
 const view = new EditorView({ parent: editorEl, state: active.state })
@@ -188,6 +196,8 @@ function drawTabs(): void {
 
 /** Put `tab` in the editor, keeping the one it replaces (text, undo, selection, scroll). */
 async function activate(tab: Tab): Promise<void> {
+  // A document tab clicked (or opened) while the terminal is maximized comes to the front.
+  documentShown()
   if (tab === active) return
   // A streaming reply writes into whatever the view shows: finish it first.
   await stopPrompt()
@@ -211,16 +221,76 @@ async function activate(tab: Tab): Promise<void> {
 
 /** Commands that write or render Markdown: in any other file they do nothing and their buttons are greyed out. */
 const MARKDOWN_ONLY: readonly Command[] = ['toc', 'insertTable', 'insertImage', 'insertChart', 'exportHtml', 'exportPdf']
-const MARKDOWN_ONLY_BUTTONS = MARKDOWN_ONLY.map((c) => `#toolbar button[data-cmd="${c}"]`).join(', ') + ', #export-btn'
+const MARKDOWN_ONLY_BUTTONS = MARKDOWN_ONLY.map((c) => `#doc-tools button[data-cmd="${c}"]`).join(', ') + ', #export-btn'
+/** Commands on the document on screen: with the terminal maximized there is none, so they and their buttons wait. */
+const DOCUMENT_ONLY: readonly Command[] = [...MARKDOWN_ONLY, 'save', 'viewEdit', 'viewSplit', 'viewReading', 'cycleView']
+
+/** Greys out what the shown tab cannot use: Markdown-only tools elsewhere, document tools behind a maximized terminal. */
+function syncDocumentControls(): void {
+  const md = isMarkdownFile(active.path)
+  const max = terminalMaximized()
+  // The editor's tool strip shows the Markdown tools for notes only.
+  document.documentElement.dataset.docKind = md ? 'md' : 'code'
+  // TOC, inserts and export write or render Markdown: notes only.
+  for (const b of document.querySelectorAll<HTMLButtonElement>(MARKDOWN_ONLY_BUTTONS)) b.disabled = !md || max
+  $<HTMLButtonElement>('#doc-tools button[data-cmd="save"]').disabled = max
+  // Only Markdown offers Split and Reading.
+  for (const b of document.querySelectorAll<HTMLButtonElement>('#modes button')) b.disabled = max || (!md && b.dataset.mode !== 'edit')
+}
+document.addEventListener('terminal-layout', syncDocumentControls)
+
+// ---- Status bar: the open file's path as breadcrumbs -----------------------------
+
+let home: string | null = null
+void window.api.homeDir().then((h) => {
+  home = h
+  renderPath(active.path)
+})
+
+/** Home › Downloads › note.md; each folder opens in the explorer. */
+function renderPath(path: string | null): void {
+  if (!path) {
+    statusPathEl.replaceChildren()
+    return
+  }
+  const sep = path.includes('\\') && !path.includes('/') ? '\\' : '/'
+  const inHome = !!home && (path === home || path.startsWith(home + sep))
+  const rest = (inHome ? path.slice(home!.length) : path).split(/[\\/]/).filter(Boolean)
+  const crumbs: { label: string; dir: string | null }[] = []
+  let dir = inHome ? home! : sep === '/' ? '' : ''
+  if (inHome) crumbs.push({ label: 'Home', dir: home })
+  rest.forEach((part, i) => {
+    dir = dir ? dir.replace(/[\\/]+$/, '') + sep + part : sep === '/' ? '/' + part : part
+    crumbs.push({ label: part, dir: i < rest.length - 1 ? dir : null })
+  })
+  statusPathEl.replaceChildren(
+    ...crumbs.map((c, i) => {
+      const el = document.createElement(c.dir ? 'button' : 'span')
+      el.className = c.dir ? 'crumb' : 'crumb current'
+      el.textContent = c.label
+      if (c.dir) {
+        const target = c.dir
+        el.title = `Show ${target} in the explorer`
+        el.addEventListener('click', () => void setRoot(target))
+      }
+      if (i === 0) return el
+      const wrap = document.createDocumentFragment()
+      const chev = document.createElement('span')
+      chev.className = 'crumb-sep'
+      chev.textContent = '›'
+      wrap.append(chev, el)
+      return wrap
+    })
+  )
+  statusPathEl.title = path
+}
 
 /** Title bar, file name, status bar, explorer and tab strip follow the shown tab. */
 function showActive(): void {
   const path = active.path
   window.api.setTitle(path ?? '')
   filenameEl.textContent = nameOf(active)
-  statusPathEl.textContent = path ?? ''
-  // TOC, inserts and export write or render Markdown: notes only.
-  for (const b of document.querySelectorAll<HTMLButtonElement>(MARKDOWN_ONLY_BUTTONS)) b.disabled = !isMarkdownFile(path)
+  renderPath(path)
   applyMode()
   sidebarFileOpened(path)
   updateDirty()
@@ -415,6 +485,7 @@ function renderPreview(): void {
   const top = previewEl.scrollTop
   const src = source()
   previewEl.innerHTML = renderBody(src, imageEnv(active.path, 'preview'))
+  decorateCodeBlocks(previewEl)
   previewEl.classList.toggle('paged', isPaged(src))
   previewEl.scrollTop = top
 }
@@ -473,13 +544,10 @@ function setMode(next: Mode): void {
 
 /** Panes and the view buttons follow the shown tab: only Markdown offers Split and Reading. */
 function applyMode(): void {
-  const md = isMarkdownFile(active.path)
   const shown = shownMode()
   panesEl.dataset.mode = shown
-  document.querySelectorAll<HTMLButtonElement>('#modes button').forEach((b) => {
-    b.classList.toggle('active', b.dataset.mode === shown)
-    b.disabled = !md && b.dataset.mode !== 'edit'
-  })
+  document.querySelectorAll<HTMLButtonElement>('#modes button').forEach((b) => b.classList.toggle('active', b.dataset.mode === shown))
+  syncDocumentControls()
   syncLivePreview()
 }
 
@@ -579,6 +647,7 @@ const commands: Record<Command, () => void | Promise<void>> = {
   settings: () => openSettings(),
   toggleSidebar: () => toggleSidebar(),
   toggleGraphPane: () => toggleGraphPane(),
+  toggleTerminal: () => toggleTerminal(),
   newFromTemplate: () => newFromTemplate(currentRoot()),
   insertImage: () => {
     if (shownMode() === 'reading') setMode('split')
@@ -655,6 +724,7 @@ const FAILURE: Partial<Record<Command, string>> = {
 async function run(cmd: Command | (() => void | Promise<void>), title = 'Something went wrong'): Promise<void> {
   try {
     if (typeof cmd === 'string' && MARKDOWN_ONLY.includes(cmd) && !isMarkdownFile(active.path)) return
+    if (typeof cmd === 'string' && DOCUMENT_ONLY.includes(cmd) && terminalMaximized()) return
     if (typeof cmd === 'string') await commands[cmd]?.()
     else await cmd()
   } catch (err) {
@@ -694,7 +764,7 @@ document.addEventListener('file-trashed', (e) => {
 })
 document.addEventListener('settings-changed', syncEditorConfig)
 
-document.querySelectorAll<HTMLButtonElement>('#toolbar button[data-cmd]').forEach((b) => {
+document.querySelectorAll<HTMLButtonElement>('#toolbar button[data-cmd], #doc-tools button[data-cmd]').forEach((b) => {
   b.addEventListener('click', () => void run(b.dataset.cmd as Command))
 })
 const exportBtn = $('#export-btn')
@@ -716,9 +786,11 @@ exportBtn.addEventListener('click', () => {
 document.documentElement.dataset.platform = window.api.platform
 
 const menuBtn = $('#menu-btn')
+// Drawn in the window (appMenu.ts) so it takes the app's theme; focus stays in the editor.
+menuBtn.addEventListener('mousedown', (e) => e.preventDefault())
 menuBtn.addEventListener('click', () => {
   const r = menuBtn.getBoundingClientRect()
-  window.api.popupMenu(r.left, r.bottom)
+  openAppMenu(r.left, r.bottom + 4, (cmd) => void run(cmd))
 })
 document.querySelectorAll<HTMLButtonElement>('#win-controls button').forEach((b) => {
   b.addEventListener('click', () => {
@@ -788,6 +860,8 @@ void initAppearance(view).then(() => {
   void run(restoreSession, 'Could not restore the last session').finally(sessionDone)
   // Notes clicked in the graph open behind it, like any other open.
   initGraphPane((p) => void run(() => openPath(p), 'Could not open the file'))
+  // The shell starts in the explorer's folder, else the open file's folder (else home).
+  initTerminal({ cwd: () => currentRoot() ?? (active.path ? dirOf(active.path) : null), focusEditor: () => view.focus() })
   return initSidebar((p) => run(() => openPath(p), 'Could not open the file'))
 })
 view.focus()

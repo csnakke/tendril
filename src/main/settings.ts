@@ -2,6 +2,7 @@ import { app, safeStorage } from 'electron'
 import { promises as fs } from 'node:fs'
 import { join } from 'node:path'
 import type { Keybindings } from '../shared/keybindings'
+import type { SshHost } from '../shared/ssh'
 import { writeFileAtomic } from './fsx'
 
 export type Theme = 'light' | 'dark' | 'system'
@@ -17,6 +18,18 @@ export interface Settings {
   uiFontWeight: number
   editorFontWeight: number
   editorFontSize: number
+  /** The terminal panel's font (null = built-in monospace), its pixel size and weight. */
+  terminalFont: string | null
+  terminalFontSize: number
+  terminalFontWeight: number
+  /** Terminal panel height in pixels. */
+  terminalHeight: number
+  /** Settings › SSH: saved hosts (their secrets are in `pass`, see ssh/remote.ts). */
+  sshHosts: SshHost[]
+  /** This machine's sudo password is saved in `pass`, for the terminal to fill in. */
+  sudoSaved: boolean
+  /** Folders given a graph marker (`.tendril/`): what uninstalling cleans up. */
+  graphFolders: string[]
   /** CSS colour for the window boundary; null = theme default. */
   borderColor: string | null
   sidebarOpen: boolean
@@ -26,6 +39,8 @@ export interface Settings {
   /** Tag graph pane under the explorer: shown, and its height in pixels. */
   graphPaneOpen: boolean
   graphPaneHeight: number
+  /** Width of the graph pane on the right of the window. */
+  graphPaneWidth: number
   /** ThemeDef id: 'builtin:<slug>' or 'obsidian:<owner>/<repo>'. */
   themeId: string
   iconSet: 'lucide' | 'tabler' | 'phosphor' | 'remix' | 'iconoir'
@@ -83,8 +98,16 @@ export const DEFAULT_SETTINGS: Settings = {
   sidebarOpen: true,
   sidebarWidth: 240,
   sidebarRoot: null,
-  graphPaneOpen: true,
+  graphPaneOpen: false,
   graphPaneHeight: 260,
+  graphPaneWidth: 380,
+  terminalFont: null,
+  terminalFontSize: 13,
+  terminalFontWeight: 400,
+  terminalHeight: 240,
+  sshHosts: [],
+  sudoSaved: false,
+  graphFolders: [],
   themeId: 'builtin:catppuccin',
   iconSet: 'lucide',
   wrapText: true,

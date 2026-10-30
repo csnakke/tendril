@@ -82,7 +82,7 @@ function stack(family: string | null, fallback: string): string {
 }
 
 async function applyFonts(): Promise<void> {
-  const families = [current.uiFont, current.editorFont].filter((f): f is string => !!f)
+  const families = [current.uiFont, current.editorFont, current.terminalFont].filter((f): f is string => !!f)
   const css = await Promise.all([...new Set(families)].map((f) => window.api.fontCss(f, false)))
   styleEl('font-faces').textContent = css.join('\n')
   const root = document.documentElement.style
@@ -97,6 +97,13 @@ async function applyFonts(): Promise<void> {
   root.setProperty('--editor-size', `${current.editorFontSize}px`)
   root.setProperty('--ui-weight', String(current.uiFontWeight))
   root.setProperty('--editor-weight', String(current.editorFontWeight))
+  // The terminal draws its own text, not with CSS: it re-reads its font on this.
+  document.dispatchEvent(new CustomEvent('fonts-applied'))
+}
+
+/** The terminal's font stack: the chosen family, else the theme's or the built-in monospace. */
+export function terminalFontFamily(): string {
+  return stack(current.terminalFont, palette.fontMono ?? EDITOR_FONT_DEFAULT)
 }
 
 export function settings(): Settings {
@@ -110,7 +117,7 @@ export async function updateSettings(patch: Partial<Settings>): Promise<void> {
     await applyFonts()
   }
   if ('borderColor' in patch) applyBorder()
-  if (['uiFont', 'editorFont', 'uiFontSize', 'editorFontSize', 'uiFontWeight', 'editorFontWeight'].some((k) => k in patch)) await applyFonts()
+  if (['uiFont', 'editorFont', 'terminalFont', 'uiFontSize', 'editorFontSize', 'terminalFontSize', 'uiFontWeight', 'editorFontWeight', 'terminalFontWeight'].some((k) => k in patch)) await applyFonts()
   if ('iconSet' in patch) setIconSet(current.iconSet)
 }
 

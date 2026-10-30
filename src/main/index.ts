@@ -17,6 +17,9 @@ import { buildGraph, disableGraph, enableGraph, forgetGraph, isGraphFolder, unwa
 import { loadSession, saveSession } from './session'
 import { readTextFile } from './textFile'
 import { lint } from './lint'
+import { killAllTerminals, killTerminal, resizeTerminal, startTerminal, writeTerminal } from './terminal'
+import { closeRemote, registerRemote, remoteMenuItems } from './ssh/remote'
+import { exportBackup, importBackup, removeGraphMarkers } from './backup'
 import type { LintKind } from '../shared/lint'
 
 type Command = string
@@ -134,6 +137,7 @@ function menuTemplate(keys: Record<string, string>): MenuItemConstructorOptions[
         { type: 'separator' },
         { label: 'Toggle Sidebar', accelerator: acc('toggleSidebar'), click: () => send('toggleSidebar') },
         { label: 'Toggle Graph Pane', accelerator: acc('toggleGraphPane'), click: () => send('toggleGraphPane') },
+        { label: 'Toggle Terminal', accelerator: acc('toggleTerminal'), click: () => send('toggleTerminal') },
         { label: 'Wrap Text', accelerator: acc('toggleWrap'), click: () => send('toggleWrap') },
         { type: 'separator' },
         { label: 'Next Tab', accelerator: acc('nextTab'), click: () => send('nextTab') },
@@ -200,7 +204,12 @@ function createWindow(): void {
     quitting = false
     send('hotExit')
   })
-  win.webContents.on('render-process-gone', () => (sessionReady = false))
+  win.webContents.on('render-process-gone', () => {
+    sessionReady = false
+    killAllTerminals()
+  })
+  // A reload starts a fresh window that knows nothing of the old shells.
+  win.webContents.on('did-start-loading', killAllTerminals)
 
   win.on('closed', () => {
     win = null
@@ -208,6 +217,8 @@ function createWindow(): void {
     sessionReady = false
     unwatchAll()
     unwatchGraph()
+    killAllTerminals()
+    closeRemote()
   })
   const notifyState = (): void => win?.webContents.send('window:state', isZoomed())
   win.on('maximize', notifyState)
@@ -377,7 +388,21 @@ handle('export:pdf', async (_e, html: string, suggestedName: string, opts?: { pa
 
 // ---- File explorer -----------------------------------------------------------
 
-handle('dir:list', (_e, dir: string) => listDir(dir))
+handle('dir:list', async (_e, dir: string) => {
+  const listing = await listDir(dir)
+  // Graph markers made before folders were recorded are picked up as the explorer comes across them.
+  const found = [...(listing.graph ? [dir] : []), ...listing.entries.filter((d) => d.graph).map((d) => d.path)]
+  if (found.length) void rememberGraphFolders(found, true)
+  return listing
+})
+
+/** Folders holding a graph marker (`.tendril/`), so uninstalling can remove exactly those. */
+async function rememberGraphFolders(dirs: string[], on: boolean): Promise<void> {
+  const known = new Set((await loadSettings()).graphFolders)
+  const before = known.size
+  for (const d of dirs) on ? known.add(d) : known.delete(d)
+  if (known.size !== before || !on) await saveSettings({ graphFolders: [...known] })
+}
 handle('dir:home', () => homedir())
 handle('dir:pick', async (_e, current: string | null) => {
   const r = await dialog.showOpenDialog(win!, { properties: ['openDirectory'], defaultPath: current ?? undefined })
@@ -403,6 +428,7 @@ on('explorer:contextMenu', async (e, path: string, isDir: boolean, folder: strin
     void (on ? enableGraph(path) : disableGraph(path)).then(
       () => {
         forgetGraph(path)
+        void rememberGraphFolders([path], on)
         e.sender.send('graph:marker', path, on)
       },
       (err: Error) => dialog.showMessageBox(win!, { type: 'error', message: on ? 'Could not enable the graph' : 'Could not disable the graph', detail: err.message })
@@ -413,7 +439,8 @@ on('explorer:contextMenu', async (e, path: string, isDir: boolean, folder: strin
     ...(isDir ? [{ label: graph ? 'Disable Graph' : 'Enable Graph Here', click: () => setGraph(!graph) }] : []),
     { type: 'separator' },
     { label: isDir ? 'Reveal Folder in File Manager' : 'Reveal in File Manager', click: () => shell.showItemInFolder(path) },
-    ...(isRoot ? [] : [{ type: 'separator' as const }, { label: 'Move to Trash', click: () => e.sender.send('explorer:trash', path) }])
+    ...(isRoot ? [] : [{ type: 'separator' as const }, { label: 'Move to Trash', click: () => e.sender.send('explorer:trash', path) }]),
+    ...remoteMenuItems(path)
   ])
   menu.popup({ window: win! })
 })
@@ -559,6 +586,40 @@ handle('lint:run', (_e, kind: LintKind, text: string) => {
   return lint(kind, text)
 })
 
+// ---- Terminal ----------------------------------------------------------------
+
+handle('term:start', (e, cols: number, rows: number, cwd: string | null) =>
+  startTerminal(cols, rows, cwd, (id, data) => !e.sender.isDestroyed() && e.sender.send('term:data', id, data),
+    (id, code) => !e.sender.isDestroyed() && e.sender.send('term:exit', id, code)))
+on('term:write', (_e, id: number, data: string) => writeTerminal(id, data))
+on('term:resize', (_e, id: number, cols: number, rows: number) => resizeTerminal(id, cols, rows))
+on('term:kill', (_e, id: number) => killTerminal(id))
+
+// ---- Backup ------------------------------------------------------------------
+
+handle('backup:export', async () => {
+  const r = await dialog.showSaveDialog(win!, {
+    title: 'Export Tendril settings',
+    defaultPath: join(homedir(), `tendril-backup-${new Date().toISOString().slice(0, 10)}.tendril`),
+    filters: [{ name: 'Tendril backup', extensions: ['tendril'] }]
+  })
+  return r.canceled || !r.filePath ? null : exportBackup(r.filePath)
+})
+handle('backup:import', async () => {
+  const r = await dialog.showOpenDialog(win!, { title: 'Import Tendril settings', properties: ['openFile'], filters: [{ name: 'Tendril backup', extensions: ['tendril', 'json'] }] })
+  return r.canceled || !r.filePaths[0] ? null : importBackup(r.filePaths[0])
+})
+// Restart (after an import): the usual hot exit keeps the open tabs, then the app starts again.
+let relaunch = false
+on('app:relaunch', () => {
+  relaunch = true
+  send('hotExit')
+})
+
+// ---- Remote (SSH) ------------------------------------------------------------
+
+registerRemote(handle, on, () => win)
+
 // ---- Settings & fonts ------------------------------------------------------
 
 handle('settings:get', async () => redact(await loadSettings()))
@@ -653,8 +714,24 @@ on('menu:suspend', (_e, on: boolean) => {
   recording = on
   buildMenu()
 })
-on('menu:popup', (_e, x: number, y: number) => {
-  Menu.getApplicationMenu()?.popup({ window: win!, x: Math.round(x), y: Math.round(y) })
+// The in-app menu (☰) asks for Electron's built-in actions by name; only these.
+const MENU_ROLES = new Set(['undo', 'redo', 'cut', 'copy', 'paste', 'selectAll', 'toggleDevTools', 'resetZoom', 'zoomIn', 'zoomOut', 'togglefullscreen', 'reload', 'quit'])
+on('menu:role', (e, role: string) => {
+  if (!MENU_ROLES.has(role) || !win) return
+  const wc = e.sender
+  if (role === 'undo') wc.undo()
+  else if (role === 'redo') wc.redo()
+  else if (role === 'cut') wc.cut()
+  else if (role === 'copy') wc.copy()
+  else if (role === 'paste') wc.paste()
+  else if (role === 'selectAll') wc.selectAll()
+  else if (role === 'toggleDevTools') wc.toggleDevTools()
+  else if (role === 'resetZoom') wc.setZoomLevel(0)
+  else if (role === 'zoomIn') wc.setZoomLevel(wc.getZoomLevel() + 0.5)
+  else if (role === 'zoomOut') wc.setZoomLevel(wc.getZoomLevel() - 0.5)
+  else if (role === 'togglefullscreen') win.setFullScreen(!win.isFullScreen())
+  else if (role === 'reload' && !app.isPackaged) wc.reload()
+  else if (role === 'quit') app.quit()
 })
 
 // ---- Lifecycle -------------------------------------------------------------
@@ -681,7 +758,43 @@ async function openInWindow(path: string): Promise<void> {
   win?.webContents.send('file:opened', { path, content: read.text })
 }
 
+// ---- Command line: backup and uninstall helpers (no window) -------------------
+//   tendril --export <file>          write a backup of the configuration
+//   tendril --import <file>          restore one
+//   tendril --remove-graph-markers   remove the graph markers put in your folders (uninstall)
+
+const cli = ((): { cmd: 'export' | 'import' | 'remove-graph-markers'; file?: string } | null => {
+  const args = process.argv.slice(app.isPackaged ? 1 : 2)
+  for (const cmd of ['export', 'import', 'remove-graph-markers'] as const) {
+    const i = args.indexOf(`--${cmd}`)
+    if (i >= 0) return { cmd, file: args[i + 1] }
+  }
+  return null
+})()
+// Runs headless, so it also works over SSH or with no desktop at all.
+if (cli && process.platform === 'linux') app.commandLine.appendSwitch('ozone-platform', 'headless')
+
+async function runCli(c: NonNullable<typeof cli>): Promise<never> {
+  app.dock?.hide()
+  try {
+    if (c.cmd === 'remove-graph-markers') {
+      const removed = await removeGraphMarkers()
+      process.stdout.write(removed.map((d) => `removed graph marker in ${d}`).join('\n') + (removed.length ? '\n' : ''))
+    } else {
+      if (!c.file || c.file.startsWith('-')) throw new Error(`Usage: tendril --${c.cmd} <file>`)
+      const file = resolve(c.file)
+      process.stdout.write((c.cmd === 'export' ? await exportBackup(file) : await importBackup(file)) + '\n')
+    }
+    app.exit(0)
+  } catch (err) {
+    process.stderr.write(`tendril: ${(err as Error).message}\n`)
+    app.exit(1)
+  }
+  return new Promise<never>(() => {})
+}
+
 app.whenReady().then(async () => {
+  if (cli) return runCli(cli)
   protocol.handle('asset', serveAsset)
   keybindings = (await loadSettings()).keybindings
   buildMenu()
@@ -694,7 +807,23 @@ app.whenReady().then(async () => {
 app.on('before-quit', () => {
   quitting = true
 })
+app.on('will-quit', () => {
+  killAllTerminals()
+  closeRemote()
+})
+// Stopped from outside (logout, `kill`): close connections properly first.
+for (const signal of ['SIGTERM', 'SIGINT', 'SIGHUP'] as const) {
+  process.on(signal, () => {
+    killAllTerminals()
+    closeRemote()
+    app.exit(0)
+  })
+}
 
 app.on('window-all-closed', () => {
+  if (relaunch) {
+    app.relaunch()
+    return app.quit()
+  }
   if (process.platform !== 'darwin') app.quit()
 })

@@ -4,6 +4,7 @@ import { StateField, type EditorState, type Range } from '@codemirror/state'
 import { PropertiesWidget } from './propertiesWidget'
 import { parseMarker, parseOptions } from './tables/model'
 import { safeDecodeURI } from './paths'
+import { codeActions, langOf } from './codeRun'
 
 /**
  * Obsidian-style live preview: Markdown renders in place, except on lines
@@ -11,6 +12,28 @@ import { safeDecodeURI } from './paths'
  * can be edited. Styling classes (headings, emphasis, …) always apply; only
  * the *hiding* of markers is suspended on active lines.
  */
+
+/** Copy / Run at the end of a fenced block's opening line; the code is read from the document on click. */
+class CodeActionsWidget extends WidgetType {
+  constructor(private lang: string) {
+    super()
+  }
+  eq(o: CodeActionsWidget): boolean {
+    return o.lang === this.lang
+  }
+  toDOM(view: EditorView): HTMLElement {
+    const el: HTMLElement = codeActions(this.lang, () => {
+      let node = syntaxTree(view.state).resolveInner(view.posAtDOM(el), 1)
+      while (node.parent && node.name !== 'FencedCode') node = node.parent
+      const text = node.name === 'FencedCode' ? node.getChild('CodeText') : null
+      return text ? view.state.sliceDoc(text.from, text.to) : ''
+    })
+    return el
+  }
+  ignoreEvent(): boolean {
+    return true
+  }
+}
 
 class TextWidget extends WidgetType {
   constructor(private text: string, private cls: string) {
@@ -220,6 +243,11 @@ function build(view: EditorView, resolveImage: ImageResolver): DecorationSet {
         }
         if (name === 'FencedCode' || name === 'CodeBlock') {
           eachLine(node.from, node.to, 'lp-codeblock')
+          if (name === 'FencedCode') {
+            const info = node.node.getChild('CodeInfo')
+            const lang = langOf(info ? state.sliceDoc(info.from, info.to) : '')
+            decos.push(Decoration.widget({ widget: new CodeActionsWidget(lang), side: 1 }).range(state.doc.lineAt(node.from).to))
+          }
           return
         }
         if (name === 'Image' && !isActive(node.from, node.to)) {

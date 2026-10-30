@@ -1,10 +1,10 @@
 import type { DirEntry } from '../preload/index'
-import iconUrl from '../../icons/icon.png'
 import { settings, updateSettings } from './appearance'
 import { icon } from './icons/index'
 import { alertBox, confirmBox } from './messageBox'
 import { IMAGE_FILE, localUrl } from './paths'
 import { showMenu } from './tables/menu'
+import { promptText } from './sshPrompt'
 
 /**
  * AppFlowy-style file explorer: header, search, "New note", then a lazily
@@ -169,6 +169,7 @@ function list(dir: string, depth: number): HTMLUListElement {
       li.setAttribute('aria-expanded', String(open))
       const graph = graphDirs.has(e.path)
       row.innerHTML = `<span class="chevron">${icon('chevron-right')}</span>${icon(open ? 'folder-open' : 'folder')}<span class="name"></span>${graph ? `<span class="graph-badge" title="Graph folder">${icon('graph')}</span>` : ''}`
+      row.draggable = true // drag onto a remote folder to upload it
       if (graph) {
         row.classList.add('graph-folder')
         row.classList.toggle('graph-active', e.path === activeGraph)
@@ -200,6 +201,13 @@ treeEl.addEventListener('click', (e) => {
   }
 })
 treeEl.addEventListener('dragstart', (e) => {
+  const dir = (e.target as HTMLElement).closest<HTMLElement>('li[data-kind]')
+  if (dir?.dataset.kind === 'dir' && dir.dataset.path && e.dataTransfer) {
+    // Only the Remote section takes a folder (to upload it); the editor ignores this type.
+    e.dataTransfer.effectAllowed = 'copy'
+    e.dataTransfer.setData('application/x-tendril-dir', dir.dataset.path)
+    return
+  }
   const li = (e.target as HTMLElement).closest<HTMLElement>('li[data-kind="file"]')
   const path = li?.dataset.path
   if (!path || !e.dataTransfer) return e.preventDefault()
@@ -269,7 +277,10 @@ rootMenuBtn.addEventListener('click', () => {
       { label: 'Open Folder…', run: () => void window.api.pickDir(root).then((d) => (d ? setRoot(d) : undefined)) },
       { sep: true },
       { label: 'Refresh', run: () => void refresh() },
-      { label: 'Reveal in File Manager', run: () => root && void window.api.showInFolder(root) }
+      { label: 'Reveal in File Manager', run: () => root && void window.api.showInFolder(root) },
+      { label: 'Open Trash', run: () => void window.api.openTrash() },
+      { sep: true },
+      { label: 'Hide Sidebar', run: () => shown() && toggleSidebar() }
     ],
     r.left,
     r.bottom + 2
@@ -294,8 +305,21 @@ searchEl.addEventListener('keydown', (e) => {
   }
 })
 $('#sidebar-new').addEventListener('click', () => document.dispatchEvent(new CustomEvent('new-note', { detail: root })))
-$('#sidebar-trash').addEventListener('click', () => void window.api.openTrash())
-$<HTMLImageElement>('#sidebar .sb-logo').src = iconUrl
+$('#sidebar-find').addEventListener('click', () => searchEl.focus())
+$('#sidebar-refresh').addEventListener('click', () => void refresh())
+$('#sidebar-mkdir').addEventListener('click', async () => {
+  if (!root) return
+  const name = (await promptText('New folder', `In ${root}`, 'Folder name', 'Create'))?.trim()
+  if (!name) return
+  if (/[\\/]/.test(name) || name === '.' || name === '..') return void alertBox('Not a folder name', 'A folder name cannot contain / or \\.')
+  const sep = root.includes('\\') && !root.includes('/') ? '\\' : '/'
+  try {
+    await window.api.ensureDir(root.replace(/[\\/]+$/, '') + sep + name)
+    await refresh()
+  } catch (err) {
+    await alertBox('Could not create the folder', (err as Error).message)
+  }
+})
 
 // ---- Visibility & width -------------------------------------------------------
 
@@ -305,14 +329,25 @@ function applyOpen(open: boolean): void {
   $('#toolbar button[data-cmd="toggleSidebar"]').classList.toggle('active', open)
 }
 
+// While the terminal is maximized the sidebar starts hidden, and toggling it
+// lasts only that long: the saved choice comes back when the terminal steps down.
+let held = false
+const shown = (): boolean => document.documentElement.dataset.sidebar === 'open'
+
 export function toggleSidebar(): void {
-  const open = !settings().sidebarOpen
+  const open = !shown()
   applyOpen(open)
-  void updateSettings({ sidebarOpen: open })
+  if (!held) void updateSettings({ sidebarOpen: open })
 }
 
-$('#sidebar-collapse').addEventListener('click', () => settings().sidebarOpen && toggleSidebar())
-$('#sidebar-expand').addEventListener('click', () => !settings().sidebarOpen && toggleSidebar())
+/** Hide the sidebar for the maximized terminal (on), or bring back the saved choice (off). */
+export function holdSidebar(on: boolean): void {
+  if (on === held) return
+  held = on
+  applyOpen(on ? false : settings().sidebarOpen)
+}
+
+$('#sidebar-expand').addEventListener('click', () => !shown() && toggleSidebar())
 
 // Peek: hovering the collapsed rail floats the sidebar over the editor until
 // the pointer leaves it (or a file is opened).

@@ -10,6 +10,8 @@ import type { Session } from '../main/session'
 import type { GraphData } from '../shared/graph'
 import type { Template } from '../main/templates'
 import type { LintKind, LintMessage } from '../shared/lint'
+import type { RemoteEntry, RemoteState, SshHost, SshHostInput, SshPrompt, SshSecrets, Transfer } from '../shared/ssh'
+export type { RemoteEntry, RemoteState, SshForward, SshHost, SshHostInput, SshPrompt, SshSecrets, Transfer } from '../shared/ssh'
 
 export type Command =
   | 'new'
@@ -26,6 +28,7 @@ export type Command =
   | 'settings'
   | 'toggleSidebar'
   | 'toggleGraphPane'
+  | 'toggleTerminal'
   | 'toggleWrap'
   | 'newFromTemplate'
   | 'hotExit'
@@ -64,12 +67,20 @@ export interface Settings {
   uiFontWeight: number
   editorFontWeight: number
   editorFontSize: number
+  terminalFont: string | null
+  terminalFontSize: number
+  terminalFontWeight: number
+  terminalHeight: number
+  sshHosts: SshHost[]
+  sudoSaved: boolean
+  graphFolders: string[]
   borderColor: string | null
   sidebarOpen: boolean
   sidebarWidth: number
   sidebarRoot: string | null
   graphPaneOpen: boolean
   graphPaneHeight: number
+  graphPaneWidth: number
   themeId: string
   iconSet: 'lucide' | 'tabler' | 'phosphor' | 'remix' | 'iconoir'
   wrapText: boolean
@@ -166,6 +177,60 @@ const api = {
   },
   /** Abort every in-flight completion (the editor runs one at a time). */
   llmCancel: (): void => ipcRenderer.send('llm:cancel'),
+  /** Start the user's shell in a pseudo-terminal (in `cwd` when it is a folder); resolves with its id. */
+  termStart: (cols: number, rows: number, cwd: string | null): Promise<number> => ipcRenderer.invoke('term:start', cols, rows, cwd),
+  termWrite: (id: number, data: string): void => ipcRenderer.send('term:write', id, data),
+  termResize: (id: number, cols: number, rows: number): void => ipcRenderer.send('term:resize', id, cols, rows),
+  termKill: (id: number): void => ipcRenderer.send('term:kill', id),
+  onTermData: (cb: (id: number, data: string) => void): void => {
+    ipcRenderer.on('term:data', (_e, id: number, data: string) => cb(id, data))
+  },
+  onTermExit: (cb: (id: number, code: number) => void): void => {
+    ipcRenderer.on('term:exit', (_e, id: number, code: number) => cb(id, code))
+  },
+  // ---- SSH: saved hosts, the remote explorer, transfers (secrets go to main and `pass`, never back) ----
+  sshPassStatus: (): Promise<{ installed: boolean; ready: boolean; broken: boolean }> => ipcRenderer.invoke('ssh:passStatus'),
+  /** Set up Tendril's own password store (once): a GPG key protected by `passphrase`, then `pass init`. */
+  sshSetupStore: (passphrase: string): Promise<void> => ipcRenderer.invoke('ssh:setupStore', passphrase),
+  sshSaveHost: (host: SshHostInput, secrets: SshSecrets): Promise<SshHost[]> => ipcRenderer.invoke('ssh:saveHost', host, secrets),
+  sshDeleteHost: (id: string): Promise<SshHost[]> => ipcRenderer.invoke('ssh:deleteHost', id),
+  /** A key file's path (the main process reads it when the host is saved). */
+  sshPickKey: (): Promise<string | null> => ipcRenderer.invoke('ssh:pickKey'),
+  sshTest: (id: string): Promise<string> => ipcRenderer.invoke('ssh:test', id),
+  sshSaveSudo: (password: string): Promise<void> => ipcRenderer.invoke('ssh:saveSudo', password),
+  sshClearSudo: (): Promise<void> => ipcRenderer.invoke('ssh:clearSudo'),
+  onSshPrompt: (cb: (p: SshPrompt) => void): void => {
+    ipcRenderer.on('ssh:prompt', (_e, p: SshPrompt) => cb(p))
+  },
+  sshPromptReply: (id: number, value: string | null, save: boolean): void => ipcRenderer.send('ssh:promptReply', id, value, save),
+  remoteConnect: (target: { hostId: string } | { quick: string }): Promise<RemoteState> => ipcRenderer.invoke('remote:connect', target),
+  remoteDisconnect: (): void => ipcRenderer.send('remote:disconnect'),
+  remoteState: (): Promise<RemoteState> => ipcRenderer.invoke('remote:state'),
+  onRemoteState: (cb: (s: RemoteState) => void): void => {
+    ipcRenderer.on('remote:state', (_e, s: RemoteState) => cb(s))
+  },
+  remoteList: (dir: string): Promise<RemoteEntry[]> => ipcRenderer.invoke('remote:list', dir),
+  /** The remote folder "Upload to remote" (local explorer menu) sends to. */
+  remoteSelect: (dir: string): void => ipcRenderer.send('remote:select', dir),
+  remoteForward: (id: string, on: boolean): Promise<void> => ipcRenderer.invoke('remote:forward', id, on),
+  remoteShellCommand: (): Promise<string> => ipcRenderer.invoke('remote:shellCommand'),
+  remoteUpload: (paths: string[], dir: string): Promise<void> => ipcRenderer.invoke('remote:upload', paths, dir),
+  remoteDownload: (paths: string[], localDir: string | null): Promise<void> => ipcRenderer.invoke('remote:download', paths, localDir),
+  remoteContextMenu: (path: string, isDir: boolean, localRoot: string | null): void => ipcRenderer.send('remote:contextMenu', path, isDir, localRoot),
+  onRemoteRefresh: (cb: (dir: string) => void): void => {
+    ipcRenderer.on('remote:refresh', (_e, dir: string) => cb(dir))
+  },
+  transfers: (): Promise<Transfer[]> => ipcRenderer.invoke('xfer:list'),
+  onTransfers: (cb: (list: Transfer[]) => void): void => {
+    ipcRenderer.on('xfer:list', (_e, list: Transfer[]) => cb(list))
+  },
+  transferStop: (id: number): void => ipcRenderer.send('xfer:stop', id),
+  transferResume: (id: number): void => ipcRenderer.send('xfer:resume', id),
+  transfersClear: (): void => ipcRenderer.send('xfer:clear'),
+  /** Settings › Backup: resolve with a summary, or null when the dialog was cancelled. */
+  backupExport: (): Promise<string | null> => ipcRenderer.invoke('backup:export'),
+  backupImport: (): Promise<string | null> => ipcRenderer.invoke('backup:import'),
+  relaunch: (): void => ipcRenderer.send('app:relaunch'),
   /** ESLint / Ruff findings for a source file's text (run in the main process, see main/lint.ts). */
   lint: (kind: LintKind, text: string): Promise<LintMessage[]> => ipcRenderer.invoke('lint:run', kind, text),
   /** Reach the active provider and check the model; resolves with a short status line. */
@@ -225,7 +290,8 @@ const api = {
   onWindowState: (cb: (zoomed: boolean) => void): void => {
     ipcRenderer.on('window:state', (_e, z: boolean) => cb(z))
   },
-  popupMenu: (x: number, y: number): void => ipcRenderer.send('menu:popup', x, y),
+  /** An Electron built-in action for the in-app menu (undo, copy, zoom, quit…; main keeps an allow-list). */
+  menuRole: (role: string): void => ipcRenderer.send('menu:role', role),
   /** Keep menu accelerators from firing while a shortcut is being recorded. */
   suspendMenu: (on: boolean): void => ipcRenderer.send('menu:suspend', on),
   resizeStart: (edge: string, x: number, y: number): void => ipcRenderer.send('window:resizeStart', edge, x, y),

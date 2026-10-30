@@ -18,6 +18,8 @@ export interface MenuItem {
   sep?: boolean
   disabled?: boolean
   checked?: boolean
+  /** Keyboard shortcut shown on the right, e.g. "Ctrl+S". */
+  hint?: string
   run?: () => void
   sub?: MenuItem[] | ((close: () => void) => HTMLElement)
 }
@@ -83,8 +85,11 @@ function build(items: Item[], done: () => void): HTMLElement {
     row.type = 'button'
     row.className = 'ctx-item' + (it.sub ? ' has-sub' : '')
     row.disabled = !!it.disabled
-    row.innerHTML = `<span class="ctx-check">${it.checked ? '✓' : ''}</span><span class="ctx-label"></span>${it.sub ? '<span class="ctx-arrow">›</span>' : ''}`
+    // Focus stays where it was (the editor), so Copy, Paste… act on it.
+    row.addEventListener('mousedown', (e) => e.preventDefault())
+    row.innerHTML = `<span class="ctx-check">${it.checked ? '✓' : ''}</span><span class="ctx-label"></span>${it.hint ? '<span class="ctx-hint"></span>' : ''}${it.sub ? '<span class="ctx-arrow">›</span>' : ''}`
     row.querySelector('.ctx-label')!.textContent = it.label ?? ''
+    if (it.hint) row.querySelector('.ctx-hint')!.textContent = it.hint
     if (it.sub) {
       const sub = typeof it.sub === 'function' ? it.sub(done) : build(it.sub, done)
       sub.classList.add('ctx-sub')

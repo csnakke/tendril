@@ -33,6 +33,8 @@ or opening Word. 🛡️
 - [Images](#%EF%B8%8F-images)
 - [Explorer](#%EF%B8%8F-explorer)
 - [Code & text files](#-code--text-files)
+- [Terminal](#-terminal)
+- [Remote files over SSH](#-remote-files-over-ssh)
 - [Tag graph](#%EF%B8%8F-tag-graph)
 - [Prompt Me — optional AI](#-prompt-me--optional-ai)
 - [PDF & HTML export](#%EF%B8%8F-pdf--html-export)
@@ -97,6 +99,8 @@ Tendril is a deliberate merge of the features people actually use in each tool:
 | 🪟 | **Three views** | Edit, Split and Reading for Markdown notes — with Edit always rendering Markdown in place as you type |
 | ✏️ | **Multiple cursors** | Sublime-style: `Ctrl+D`, column carets, split selection into lines |
 | 🐍 | **Code & text files** | `.py` and `.js` files highlighted and linted (Ruff, ESLint) with one-click fixes; `.txt`, `.env` and other text files open as plain text ([details](#-code--text-files)) |
+| 🌐 | **Remote files over SSH** | A Remote section in the explorer: browse a server, drag to upload, right-click to download — resumable rsync transfers of any size, port forwarding, keys and passwords kept in `pass` ([details](#-remote-files-over-ssh)) |
+| 🖥️ | **Built-in terminal** | Your shell in a panel under the editor (``Ctrl+` ``), in your theme's colours and its own font ([details](#-terminal)) |
 | 🗂️ | **File explorer** | AppFlowy-style sidebar that follows the open file — search, templates, trash, reveal-in-file-manager |
 | 🕸️ | **3D tag graph** | Obsidian-style graph of a folder's notes and their tags — glowing, revolving, coloured by your theme |
 | 🤖 | **Prompt Me (optional AI)** | Inline prompt bar backed by a local LLM or OpenRouter — **off by default** |
@@ -225,6 +229,11 @@ favourites or pin it to the panel — on GNOME the installer pins it to the dock
 (`TENDRIL_PIN=0` to skip). `.md` files get **Open with Tendril**.
 
 - 🧩 **Needs:** Docker (Docker Desktop, OrbStack or Colima on macOS). The OS and CPU (x64 / arm64) are detected automatically.
+- 🔑 **Also installs on your machine (not in Docker), only what is missing,** for the [Remote section](#-remote-files-over-ssh):
+  `pass` + `gnupg`, a full `rsync` (3.1+), the OpenSSH client and a windowed `pinentry` (GPG's passphrase dialog).
+  Linux uses your distribution's package manager (apt, dnf, pacman, zypper, apk — asks for `sudo` once);
+  macOS uses Homebrew (`brew install rsync pass pinentry-mac`; `ssh` is built in) and asks you to install Homebrew first if it is missing.
+  Tendril sets up its own password store the first time you save a key or password (see [Settings › SSH](#%EF%B8%8F-settings--ssh--saved-hosts)). `TENDRIL_SKIP_DEPS=1` skips this step.
 - 🧹 The Node image is removed afterwards — unless it was already on your machine, then it is left alone.
 - ⚙️ **Options:** `TENDRIL_INSTALL_DIR` (folder the app goes in), `TENDRIL_REF` (branch or tag), `TENDRIL_REPO` (git URL, or a local folder to build your working copy), `TENDRIL_NODE_IMAGE`, `TENDRIL_PIN` — e.g.
   `curl -fsSL …/install.sh | TENDRIL_REF=v0.2.0 bash`
@@ -234,8 +243,17 @@ favourites or pin it to the panel — on GNOME the installer pins it to the dock
   The launcher checks at every start which one works, so a later system change never stops the
   app; if neither is available it still starts, without the sandbox, and tells you to rerun the installer.
 - 🔄 **Update:** run the same command again.
-- 🗑️ **Uninstall:** `curl -fsSL …/install.sh | bash -s -- --uninstall` — removes the app, menu
-  entry, icon, `tendril` command and sandbox helper; your settings stay.
+- 🗑️ **Uninstall:** `curl -fsSL …/install.sh | bash -s -- --uninstall`. It first offers to **export your settings**
+  (`~/tendril-backup-<date>.tendril`), shows everything it will remove and asks to confirm, then leaves **no trace of
+  Tendril**: the app, launcher entry, icons, `tendril` command, sandbox helper, `~/.config/Tendril` (settings, session,
+  themes, fonts, trusted hosts, caches, **and Tendril's own password store and GPG key** with every saved key and
+  password; the `~/Library/…` equivalents on macOS), runtime sockets and the graph markers (`.tendril/`) it put in your
+  folders. `pass`, `gnupg`, `rsync`, `ssh`,
+  Docker and your own notes stay.
+- 💾 **Backup:** **Settings › Backup › Export / Import**, or `tendril --export <file>` / `tendril --import <file>`.
+  A backup holds settings, SSH hosts and their port forwards, trusted hosts, imported themes and the built-in templates;
+  **not** saved keys and passwords (they stay in `pass`; add them again after importing) nor downloaded fonts. After a
+  fresh install the installer offers to import the newest `~/tendril-backup-*.tendril` (or `TENDRIL_IMPORT=<file>`).
 
 ### 🔨 Build from source
 
@@ -301,6 +319,7 @@ the new keys, `↺` restores the default. On macOS read `Ctrl` as `⌘`.
 | Edit / Split / Reading | `Ctrl+1` / `Ctrl+2` / `Ctrl+3` |
 | Toggle sidebar | `Ctrl+B` |
 | Toggle graph pane | `Ctrl+Shift+G` |
+| Terminal: open / focus, or minimize from inside it | ``Ctrl+` `` |
 | Wrap text in Edit / Split view | `Alt+Z` |
 | Next / previous tab | `Ctrl+Tab` / `Ctrl+Shift+Tab` |
 
@@ -602,6 +621,98 @@ fine) with no binary data, up to **10 MB**. Otherwise *Cannot open file* says wh
 
 ---
 
+## 🖥️ Terminal
+
+``Ctrl+` `` (or the terminal button in the toolbar, or **View › Toggle Terminal**) opens a
+terminal panel under the editor, running your own shell — the login shell on macOS, as
+Terminal.app does. It starts in the explorer's folder (else the open file's folder, else home).
+
+| | |
+|---|---|
+| 🎨 | **Follows the theme**: background, text, cursor and selection come from the window's colours, and the 16 ANSI colours are taken from the theme's own palette by hue — so `ls`, `git` and prompts look like they belong. Switching theme or light/dark recolours it live |
+| 🔤 | **Its own font**: **Settings › Fonts › Terminal** — family (or a downloaded Nerd Font, *Mono* face preferred), size and weight |
+| ⌨️ | **Keys go to the shell**: while the terminal has focus, `Ctrl+C`, `Ctrl+W`, `Ctrl+B`, … reach the shell, not Tendril's menu. Copy / paste are `Ctrl+Shift+C` / `Ctrl+Shift+V` (`⌘C` / `⌘V` on macOS). ``Ctrl+` `` minimizes it again |
+| 🪶 | **Light**: one shell, a plain DOM renderer (no WebGL), and the terminal code loads only the first time you open it |
+| 📏 | **Resizable**: drag the line above it; the height is remembered |
+| ➖ | **Minimize** (**–**, or ``Ctrl+` `` from inside it) sends it to a **Terminal** chip in the status bar — the shell keeps running. Click the chip to bring it back exactly as it was: the panel at its last height, or maximized |
+| ⬜ | **Maximize** (**□**) turns it into a **Terminal** tab next to your documents, filling the window with the file explorer hidden — a full-screen terminal. The sidebar toggle still shows the explorer while maximized, without changing your saved choice. Click a document tab to go back to editing (the explorer returns as it was), the Terminal tab to come back; **□** again restores the panel |
+| 🔁 | **↻** restarts the shell; **✕** (on the panel or the Terminal tab) closes the terminal and ends the shell; when the shell exits, `Enter` starts a new one |
+
+---
+
+## 🌐 Remote files over SSH
+
+The explorer has a **Remote** section under your local folders. Connect to a server, browse it
+like a local folder, and move files either way:
+
+| | |
+|---|---|
+| 🔌 | **Connect**: click **Remote** › a saved host, or **Quick Connect…** with `user@host[:port]` (that one uses your own `~/.ssh` keys, agent and config) |
+| ⬆️ | **Upload**: drag files or folders (from the explorer or your file manager) onto a remote folder; or right-click a remote folder › Upload Files / Folders Here…; or right-click a local item › Upload to *host:folder* (the remote folder you last opened) |
+| ⬇️ | **Download**: right-click a remote file or folder › Download to *your explorer folder*, or Download to… |
+| 📊 | **Transfers** show as a chip in the status bar: progress, speed and time left per transfer, Stop and Resume |
+| 🖥️ | **Shell**: the terminal button opens `ssh` to the host in the built-in terminal, over the same connection — no second login |
+| 🔀 | **Port forwards** of the host show as switches under the header: click to start or stop one |
+
+### ⚡ Quick and reliable, at any size
+
+- One SSH connection (OpenSSH's ControlMaster) carries the listing, every transfer, the forwards
+  and the terminal shell, so nothing logs in twice.
+- Transfers use **rsync**: an interrupted transfer keeps its partial file and **resumes from it**,
+  every file is checksummed, and there is no limit on size, number of files, depth or archive type.
+  A dropped connection is retried automatically (2 s, 5 s, 10 s … up to six times), reconnecting first.
+- A server without rsync gets **sftp** instead (`put/get -a`, which also resumes, without a progress figure).
+- Two transfers run at a time; the rest wait their turn.
+
+### ⚙️ Settings › SSH — saved hosts
+
+No `~/.ssh/config` needed: each host is set up in Tendril.
+
+| Field | |
+|---|---|
+| Name | How it appears under Remote, and its folder in `pass` |
+| Hostname, User, Port | Where to connect (port 22 by default) |
+| Private key | Paste it, or **Browse…** to a key file (e.g. an AWS `.pem`) |
+| Key passphrase, Password | Optional |
+| Port forwarding | **Local** (a port here → host:port seen from the server), **Remote** (a server port → host:port seen from here), **Dynamic** (a SOCKS proxy on a port here); each listens on this machine only unless **LAN** is ticked, and **On** starts it with the connection |
+
+**Add host** saves the host. Its **key, password and passphrase go straight into Tendril's own
+[`pass`](https://www.passwordstore.org) store** — `tendril/ssh/<name>/key`, `…/password`,
+`…/passphrase` — encrypted; Tendril's settings only record that they exist.
+**Test connection** tries it.
+
+**Tendril's password store** lives in its data folder — `~/.config/Tendril/pass/` with its own GPG
+keyring in `~/.config/Tendril/gnupg/` (`~/Library/Application Support/Tendril/…` on macOS) — so your
+own `~/.password-store` and `~/.gnupg` are never used or changed. It is set up **the first time you
+save a key or password**: you choose a passphrase (typed twice), and Tendril creates a GPG key just
+for itself, runs `pass init` with it and checks that saving and reading back works. Every secret
+after that uses the same key. gpg-agent asks for the passphrase in its own dialog when Tendril needs
+a saved secret, and remembers it for an hour (8 hours at most). If the store's key goes missing,
+Settings › SSH says so and the next save sets it up again. To look inside it from a terminal:
+`PASSWORD_STORE_DIR=~/.config/Tendril/pass GNUPGHOME=~/.config/Tendril/gnupg pass`. A key-only server (like an EC2 instance) just needs the key.
+
+When connecting, Tendril starts a **private `ssh-agent`** (the system's own) for that connection
+and loads the key from `pass` into it through a pipe: the key is never written to disk in the
+clear, other programs cannot use it, and it is gone when you disconnect.
+
+### 🔑 Passwords, filled in from `pass`
+
+| Prompt | Filled in |
+|---|---|
+| ssh password or key passphrase — Tendril's connections | From the host's `pass` entry |
+| `ssh` typed in the built-in terminal | From the matching saved host (or `tendril/ssh/user@host/password`) |
+| `sudo` in the built-in terminal | From **Settings › SSH › sudo password**, only when the prompt is sudo's own *and* the terminal's foreground process really is `sudo` |
+| A new host's key | **Never** — its fingerprint is always shown for you to confirm |
+
+- **One wrong saved password, and it stops**: if the server (or sudo) asks again, Tendril asks
+  *you* instead of filling it in again. Type it with **Save in pass** ticked, and it is saved once
+  the login works.
+- Prompts go through ssh's own askpass hook, not screen text, so a server cannot fake a prompt to
+  harvest a password. OS dialogs (polkit, the macOS admin prompt) are outside Tendril and stay manual.
+- `pass` asks for your GPG passphrase with its own dialog when the key is locked (gpg-agent caches it).
+
+---
+
 ## 🕸️ Tag graph
 
 An Obsidian-style **3D graph of your notes, built from their tags**. Every note with
@@ -752,7 +863,8 @@ it to maximize, `☰` opens the menu, and the `–`/`□`/`✕` controls sit top
 | 🖌️ | Window border | Any colour, or "Theme default" |
 | 🔤 | Interface font | Any installed family, or a downloaded Nerd Font |
 | ⌨️ | Editor & preview font | Same, Mono variant |
-| 🅱️ | Font weight | Light → Bold (whatever the chosen font has), for interface and editor separately |
+| 🖥️ | Terminal font | Same, Mono variant, with its own size |
+| 🅱️ | Font weight | Light → Bold (whatever the chosen font has), for interface, editor and terminal separately |
 | 🧩 | Icon set | Lucide / Tabler / Phosphor / Remix / Iconoir |
 
 ### 🅰️ Nerd Fonts, without installing them
@@ -919,6 +1031,8 @@ assumption:
 | 📈 | **Charts are SVG built from escaped text and colours checked against `#rrggbb`** — nothing in a chart block can add markup or attributes — and they still pass through the sanitizer |
 | 🎨 | A note's own `<style>` block is kept — CSS runs nothing — and imported themes are stripped to colour variables |
 | 🧹 | **Linters run in the main process, in-process** — ESLint compiles its rule schemas with `new Function`, which the window's CSP refuses, so they stay out of the window; nothing is spawned and the editor only ever sends the text it shows |
+| 🔑 | **SSH secrets live in `pass` and the main process only**: the window sends a key or password once, to be saved, and never receives one back; keys reach ssh through a private agent, never a file; ssh runs without a shell (no command injection), and remote paths go to the server as data (`sh -s` on stdin, rsync `--protect-args`) |
+| 🖥️ | The **terminal runs only your own login shell**, spawned by the main process when you open the panel; the window can send it keystrokes and a size, nothing else, and every shell ends with the window |
 | 🕸️ | The **graph scans only folders you marked** yourself from the explorer's menu — the window has no channel to mark one — never follows symlinks, and caps file size and count |
 
 Found something? Please open an issue. 🐛
@@ -945,6 +1059,8 @@ src/
 │   ├── settings.ts    settings.json + keychain-encrypted key
 │   ├── graph.ts       tag-graph scanner, folder marker, watcher
 │   ├── lint.ts        ESLint + Ruff (WASM) for .js / .py files
+│   ├── terminal.ts    the terminal panel's shells (node-pty)
+│   ├── ssh/           remote files: connection, askpass, private agent, pass, rsync/sftp transfers, sudo fill
 │   ├── textFile.ts    what opens: text detection and the reason a file is refused
 │   └── llm.ts         OpenAI-compatible streaming client
 ├── preload/       🌉  contextBridge — the typed window.api surface
@@ -954,9 +1070,11 @@ src/
 │   ├── toc.ts         TOC build / insert / refresh
 │   ├── codeLanguage.ts  language per file: Markdown, Python, JavaScript or plain text
 │   ├── codeLint.ts    lint results → editor diagnostics and Fix actions
+│   ├── terminal.ts    terminal panel: xterm.js view, keys, resize
+│   ├── remote.ts      explorer's Remote section; settingsSsh.ts, sshPrompt.ts, transfersPanel.ts
 │   ├── tables/        model, editor, context menu, size picker
 │   ├── charts/        3D bar/pie model, SVG renderer, markdown-it plugin, chart editor
-│   ├── themes/        builtin palettes, Obsidian import, graph colours
+│   ├── themes/        builtin palettes, Obsidian import, graph and terminal colours
 │   ├── graph/         3D graph view, sidebar pane, zoomed overlay, details card
 │   └── templates/     built-in note and report templates
 └── shared/        ⌨️  shared by both processes: keybindings, front matter, graph model, lint types

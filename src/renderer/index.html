@@ -13,30 +13,11 @@
         <button id="menu-btn" class="icon-btn" title="Menu"><i data-icon="menu"></i></button>
         <button data-cmd="toggleSidebar" class="icon-btn" title="Toggle sidebar (Ctrl+B)"><i data-icon="panel-left"></i></button>
       </div>
-      <span class="sep"></span>
-      <div class="group">
-        <button data-cmd="open" class="icon-btn" title="Open (Ctrl+O)"><i data-icon="folder-open"></i></button>
-        <button data-cmd="save" class="icon-btn" title="Save (Ctrl+S)"><i data-icon="save"></i></button>
-      </div>
-      <span class="sep"></span>
-      <div class="group">
-        <button data-cmd="toc" title="Insert / remove table of contents (Ctrl+Shift+T)"><i data-icon="list"></i>TOC</button>
-        <button data-cmd="insertTable" id="insert-table-btn" title="Insert table (Ctrl+Alt+T)"><i data-icon="table"></i>Table</button>
-        <button data-cmd="insertImage" title="Insert image (Ctrl+Alt+I)"><i data-icon="image"></i>Image</button>
-        <button data-cmd="insertChart" title="Insert or edit a 3D chart (Ctrl+Alt+G)"><i data-icon="chart"></i>Chart</button>
-      </div>
-      <span class="sep"></span>
-      <div class="group">
-        <button id="export-btn" class="export-btn" title="Export the note as HTML or PDF"><span>Export</span><i data-icon="chevron-down"></i></button>
-      </div>
-      <span class="grow"></span>
-      <span id="filename">untitled.md</span>
-      <span class="grow"></span>
-      <div id="modes" role="group" aria-label="View mode">
-        <button data-cmd="viewEdit" data-mode="edit" title="Edit (Ctrl+1)"><i data-icon="pencil"></i></button>
-        <button data-cmd="viewSplit" data-mode="split" title="Split (Ctrl+2)"><i data-icon="columns"></i></button>
-        <button data-cmd="viewReading" data-mode="reading" title="Reading (Ctrl+3)"><i data-icon="book-open"></i></button>
-      </div>
+      <div id="tabbar" role="tablist" aria-label="Open documents"></div>
+      <span class="grow drag"></span>
+      <label id="sidebar-search" class="top-search"><i data-icon="search"></i><input type="search" placeholder="Search notes" autocomplete="off" spellcheck="false" /></label>
+      <button data-cmd="toggleTerminal" class="icon-btn" title="Terminal (Ctrl+`)"><i data-icon="terminal"></i></button>
+      <button data-cmd="toggleGraphPane" class="icon-btn" title="Graph (Ctrl+Shift+G)"><i data-icon="graph"></i></button>
       <button data-cmd="settings" class="icon-btn" title="Settings (Ctrl+,)"><i data-icon="settings"></i></button>
       <span class="sep"></span>
       <div id="win-controls">
@@ -48,38 +29,77 @@
     <div id="workspace">
       <div id="sidebar-rail" title="Expand sidebar (Ctrl+B)"><button id="sidebar-expand"><i data-icon="chevrons-right"></i></button></div>
       <aside id="sidebar" aria-label="File explorer">
-        <div id="sidebar-head">
-          <img class="sb-logo" alt="" />
-          <span class="sb-title">Tendril</span>
-          <label id="graph-switch" data-cmd="toggleGraphPane" title="Graph pane (Ctrl+Shift+G)"><i data-icon="graph"></i><input type="checkbox" aria-label="Show graph pane" /><span class="track"></span></label>
-          <button id="sidebar-collapse" title="Collapse sidebar (Ctrl+B)"><i data-icon="chevrons-left"></i></button>
-        </div>
-        <label id="sidebar-search" class="sb-row"><i data-icon="search"></i><input type="search" placeholder="Search notes" autocomplete="off" spellcheck="false" /></label>
-        <button id="sidebar-new" class="sb-row" title="New from template in this folder"><i data-icon="plus-circle"></i><span>New note</span></button>
         <div id="sidebar-section">
-          <button id="root-name" title="Collapse / expand"><span class="name"></span></button>
-          <button id="root-menu" title="Folder…"><i data-icon="chevron-down"></i></button>
+          <button id="root-name" title="Collapse / expand"><i data-icon="folder"></i><span class="name"></span></button>
           <span id="root-path"></span>
+          <span class="grow"></span>
+          <button type="button" id="sidebar-find" class="sb-icon" title="Search notes"><i data-icon="search"></i></button>
+          <button type="button" id="sidebar-new" class="sb-icon" title="New note (from a template) in this folder"><i data-icon="file-plus"></i></button>
+          <button type="button" id="sidebar-mkdir" class="sb-icon" title="New folder"><i data-icon="folder-plus"></i></button>
+          <button type="button" id="sidebar-refresh" class="sb-icon" title="Refresh"><i data-icon="refresh-cw"></i></button>
+          <button type="button" id="root-menu" class="sb-icon" title="Folder…"><i data-icon="chevron-down"></i></button>
         </div>
         <div id="tree" role="tree"></div>
-        <div id="graph-split" aria-hidden="true"></div>
-        <section id="graph-pane" aria-label="Tag graph" data-state="empty">
-          <div class="gp-head"><i data-icon="graph"></i><span class="gp-title">Graph</span><span class="gp-count"></span></div>
-          <div class="gp-canvas" title="Click to zoom"></div>
-          <div class="gp-empty"></div>
+        <section id="remote" data-state="off" aria-label="Remote files">
+          <div id="remote-head">
+            <button type="button" id="remote-connect" title="Connect to a host"><i data-icon="server"></i><span class="rh-label">Remote</span><i data-icon="chevron-down"></i></button>
+            <button type="button" id="remote-terminal" class="rh-btn" title="Open a shell on this host in the terminal"><i data-icon="terminal"></i></button>
+            <button type="button" id="remote-refresh" class="rh-btn" title="Refresh"><i data-icon="refresh-cw"></i></button>
+            <button type="button" id="remote-disconnect" class="rh-btn" title="Disconnect"><i data-icon="x"></i></button>
+          </div>
+          <div id="remote-forwards"></div>
+          <div id="remote-tree" role="tree"></div>
         </section>
-        <div id="sidebar-foot"><button id="sidebar-trash" title="Open the system Trash"><i data-icon="trash"></i><span>Trash</span></button></div>
       </aside>
       <div id="sidebar-split" aria-hidden="true"></div>
       <div id="docs">
-        <div id="tabbar" role="tablist" aria-label="Open documents"></div>
+        <div id="doc-tools">
+          <div class="group">
+            <button data-cmd="open" class="icon-btn" title="Open (Ctrl+O)"><i data-icon="folder-open"></i></button>
+            <button data-cmd="save" class="icon-btn" title="Save (Ctrl+S)"><i data-icon="save"></i></button>
+          </div>
+          <div class="group md-tools">
+            <span class="sep"></span>
+            <button data-cmd="toc" title="Insert / remove table of contents (Ctrl+Shift+T)"><i data-icon="list"></i>TOC</button>
+            <button data-cmd="insertTable" id="insert-table-btn" title="Insert table (Ctrl+Alt+T)"><i data-icon="table"></i>Table</button>
+            <button data-cmd="insertImage" title="Insert image (Ctrl+Alt+I)"><i data-icon="image"></i>Image</button>
+            <button data-cmd="insertChart" title="Insert or edit a 3D chart (Ctrl+Alt+G)"><i data-icon="chart"></i>Chart</button>
+          </div>
+          <span class="grow"></span>
+          <span id="filename">untitled.md</span>
+          <div class="group md-tools">
+            <button id="export-btn" class="export-btn" title="Export the note as HTML or PDF"><span>Export</span><i data-icon="chevron-down"></i></button>
+            <div id="modes" role="group" aria-label="View mode">
+              <button data-cmd="viewEdit" data-mode="edit" title="Edit (Ctrl+1)"><i data-icon="pencil"></i></button>
+              <button data-cmd="viewSplit" data-mode="split" title="Split (Ctrl+2)"><i data-icon="columns"></i></button>
+              <button data-cmd="viewReading" data-mode="reading" title="Reading (Ctrl+3)"><i data-icon="book-open"></i></button>
+            </div>
+          </div>
+        </div>
         <main id="panes" data-mode="split">
           <section id="editor" aria-label="Editor"></section>
           <section id="preview" class="markdown-body" aria-label="Preview"></section>
         </main>
+        <div id="term-split" aria-hidden="true"></div>
+        <section id="terminal-pane" aria-label="Terminal">
+          <div class="tp-head">
+            <i data-icon="terminal"></i><span class="tp-title">Terminal</span>
+            <button type="button" class="tp-restart" title="Restart the shell"><i data-icon="refresh-cw"></i></button>
+            <button type="button" class="tp-min" title="Minimize to the status bar"><i data-icon="minus"></i></button>
+            <button type="button" class="tp-max" title="Maximize to a tab"><i data-icon="square"></i></button>
+            <button type="button" class="tp-close" title="Close the terminal (ends the shell)"><i data-icon="x"></i></button>
+          </div>
+          <div class="tp-body"></div>
+        </section>
       </div>
+      <div id="graph-split" aria-hidden="true"></div>
+      <aside id="graph-pane" aria-label="Tag graph" data-state="empty">
+        <div class="gp-head"><i data-icon="graph"></i><span class="gp-title">Graph</span><span class="gp-count"></span><button type="button" class="gp-close" title="Close the graph (Ctrl+Shift+G)"><i data-icon="x"></i></button></div>
+        <div class="gp-canvas" title="Click to zoom"></div>
+        <div class="gp-empty"></div>
+      </aside>
     </div>
-    <footer id="statusbar"><span id="status-path" title="Full path of the open file"></span></footer>
+    <footer id="statusbar"><nav id="status-path" aria-label="Path of the open file"></nav><span class="grow"></span><button type="button" id="xfer-chip" title="Transfers" hidden></button><button type="button" id="term-tray" title="Show the terminal" hidden><i data-icon="terminal"></i><span>Terminal</span></button></footer>
     </div>
     <div id="resize-handles" aria-hidden="true">
       <div data-edge="n"></div><div data-edge="s"></div><div data-edge="e"></div><div data-edge="w"></div>
@@ -113,6 +133,8 @@
           <button type="button" data-page="images">Images</button>
           <button type="button" data-page="templates">Templates</button>
           <button type="button" data-page="export">Export</button>
+          <button type="button" data-page="ssh">SSH</button>
+          <button type="button" data-page="backup">Backup</button>
           <button type="button" data-page="ai">AI</button>
         </nav>
         <div class="st-pages" tabindex="-1">
@@ -170,6 +192,18 @@
                 </div>
                 <label class="size">Size <input type="number" data-size="editorFontSize" min="9" max="40" step="0.5" /> px</label>
                 <label class="size">Weight <select data-weight="editorFontWeight"></select></label>
+              </div>
+            </div>
+            <div class="setting stacked">
+              <div class="info"><div class="name">Terminal</div><div class="desc">The terminal panel (<kbd>Ctrl+`</kbd>). A monospaced font keeps columns lined up; Nerd Font <em>Mono</em> faces also draw prompt icons.</div></div>
+              <div class="font-picker">
+                <select data-target="terminalFont"><option value="">Default</option></select>
+                <div class="search-picker">
+                  <input type="search" data-target="terminalFont" placeholder="Search Nerd Fonts…" autocomplete="off" />
+                  <ul class="results" data-target="terminalFont"></ul>
+                </div>
+                <label class="size">Size <input type="number" data-size="terminalFontSize" min="8" max="32" step="0.5" /> px</label>
+                <label class="size">Weight <select data-weight="terminalFontWeight"></select></label>
               </div>
             </div>
           </section>
@@ -246,6 +280,99 @@
             <div class="setting">
               <div class="info"><div class="name">Header &amp; footer</div><div class="desc">Title and date at the top, "Page n of m" at the bottom of every page.</div></div>
               <div class="control"><label class="switch"><input type="checkbox" id="pdf-header" /><span></span></label></div>
+            </div>
+          </section>
+          <section data-page="ssh">
+            <div class="ssh-top">
+              <h3>SSH</h3>
+              <button type="button" id="ssh-add" class="ssh-btn primary"><i data-icon="plus-circle"></i>Add host</button>
+            </div>
+            <p id="ssh-pass-status" class="ssh-warn" hidden></p>
+            <div id="ssh-list-view">
+              <ul id="ssh-hosts" class="ssh-hosts"></ul>
+              <div class="ssh-card ssh-sudo">
+                <div class="ssh-card-title">sudo password<span class="ssh-sub">This machine. Filled in when sudo asks in the built-in terminal.</span></div>
+                <div class="ssh-row">
+                  <input type="password" id="sudo-password" autocomplete="off" placeholder="Password" />
+                  <button type="button" id="sudo-save" class="ssh-btn">Save</button>
+                  <button type="button" id="sudo-clear" class="ssh-ghost danger">Remove</button>
+                  <span id="sudo-state" class="ssh-sub"></span>
+                </div>
+              </div>
+            </div>
+            <form id="ssh-form" class="ssh-form" autocomplete="off" hidden>
+              <div class="ssh-form-head">
+                <button type="button" id="ssh-back" class="ssh-ghost"><i data-icon="chevrons-left"></i>Hosts</button>
+                <h4 id="ssh-form-title">New host</h4>
+              </div>
+              <div class="ssh-card">
+                <div class="ssh-card-title">Connection</div>
+                <div class="ssh-grid">
+                  <label class="g-name">Name<input name="name" placeholder="prod-ec2" spellcheck="false" /></label>
+                  <label class="g-host">Hostname<input name="hostname" placeholder="ec2-1-2-3-4.compute.amazonaws.com" spellcheck="false" /></label>
+                  <label class="g-user">User<input name="user" placeholder="ec2-user" spellcheck="false" /></label>
+                  <label class="g-port">Port<input name="port" type="number" min="1" max="65535" value="22" /></label>
+                </div>
+              </div>
+              <div class="ssh-card">
+                <div class="ssh-card-title">Authentication
+                  <div class="ssh-seg" role="radiogroup" aria-label="Authentication">
+                    <button type="button" data-auth="key">Key</button>
+                    <button type="button" data-auth="password">Password</button>
+                    <button type="button" data-auth="both">Both</button>
+                  </div>
+                </div>
+                <div class="ssh-auth-key">
+                  <div id="ssh-drop" class="ssh-drop" tabindex="0" title="Drop a key file here, or click and paste (Ctrl+V)">
+                    <i data-icon="file-plus"></i>
+                    <div class="ssh-drop-text">
+                      <div id="ssh-drop-title"></div>
+                      <div id="ssh-drop-sub" class="ssh-sub"></div>
+                    </div>
+                    <button type="button" id="ssh-browse" class="ssh-btn">Browse…</button>
+                    <button type="button" data-clear="key" class="ssh-ghost danger" hidden>Remove</button>
+                  </div>
+                  <label>Key passphrase<input name="passphrase" type="password" placeholder="Only if the key has one" /></label>
+                </div>
+                <label class="ssh-auth-password">Password<input name="password" type="password" /></label>
+              </div>
+              <div class="ssh-card">
+                <div class="ssh-card-title">Port forwarding<button type="button" id="ssh-add-forward" class="ssh-ghost"><i data-icon="plus-circle"></i>Add</button></div>
+                <ul id="ssh-forwards" class="ssh-fwds"></ul>
+                <div id="ssh-fwd-edit" class="ssh-fwd-edit" hidden>
+                  <select data-f="type"><option value="L">Local</option><option value="R">Remote</option><option value="D">Dynamic (SOCKS)</option></select>
+                  <input data-f="bindPort" type="number" min="1" max="65535" placeholder="Listen port" />
+                  <span class="ssh-arrow">→</span>
+                  <input data-f="host" placeholder="Host" spellcheck="false" />
+                  <input data-f="port" type="number" min="1" max="65535" placeholder="Port" />
+                  <label class="ssh-check" title="Listen on all interfaces, not only this machine"><input data-f="lan" type="checkbox" />LAN</label>
+                  <button type="button" id="ssh-fwd-done" class="ssh-btn">Done</button>
+                  <button type="button" id="ssh-fwd-cancel" class="ssh-ghost">Cancel</button>
+                </div>
+                <div id="ssh-fwd-hint" class="ssh-sub"></div>
+              </div>
+              <div id="ssh-errors" class="ssh-errors"></div>
+              <div class="ssh-actions">
+                <button type="button" id="ssh-delete" class="ssh-ghost danger" hidden>Delete host</button>
+                <span class="grow"></span>
+                <button type="button" id="ssh-test" class="ssh-btn" hidden>Test connection</button>
+                <button type="button" id="ssh-submit" class="ssh-btn primary">Save</button>
+              </div>
+            </form>
+          </section>
+          <section data-page="backup">
+            <h3>Backup</h3>
+            <p class="lead">Move Tendril's configuration to a fresh install, or keep a copy before uninstalling.</p>
+            <div class="setting">
+              <div class="info"><div class="name">Export</div><div class="desc">Settings, SSH hosts and their port forwards, trusted hosts, imported themes and the built-in templates, in one <code>.tendril</code> file. Saved keys and passwords stay in <code>pass</code> and are not included; neither are downloaded fonts.</div></div>
+              <div class="control"><button type="button" id="backup-export">Export…</button></div>
+            </div>
+            <div class="setting">
+              <div class="info"><div class="name">Import</div><div class="desc">Restore a backup. SSH hosts come back without keys or passwords: add those again in Settings › SSH. Tendril restarts to apply it; open tabs are kept.</div></div>
+              <div class="control"><button type="button" id="backup-import">Import…</button></div>
+            </div>
+            <div class="setting">
+              <div class="info"><div class="name">From a terminal</div><div class="desc"><code>tendril --export &lt;file&gt;</code> and <code>tendril --import &lt;file&gt;</code>. The installer offers both: export before uninstalling, import after installing.</div></div>
             </div>
           </section>
           <section data-page="ai">
@@ -362,6 +489,15 @@
         </div>
       </div>
       <div class="mb-buttons"></div>
+    </dialog>
+    <dialog id="ssh-prompt" aria-labelledby="ssh-prompt-title">
+      <div class="sp-body">
+        <div class="sp-title" id="ssh-prompt-title"></div>
+        <pre class="sp-detail"></pre>
+        <input class="sp-input" autocomplete="off" spellcheck="false" />
+        <label class="sp-save"><input type="checkbox" /> Save in pass</label>
+      </div>
+      <div class="sp-buttons"><button type="button" class="sp-cancel">Cancel</button><button type="button" class="sp-ok primary">OK</button></div>
     </dialog>
     <script type="module" src="./main.ts"></script>
   </body>

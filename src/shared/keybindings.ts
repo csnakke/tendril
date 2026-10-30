@@ -40,6 +40,7 @@ export const KEYBINDINGS: KeyBindingDef[] = [
   { id: 'viewReading', label: 'Reading', group: 'View', scope: 'app', default: 'CmdOrCtrl+3' },
   { id: 'toggleSidebar', label: 'Toggle Sidebar', group: 'View', scope: 'app', default: 'CmdOrCtrl+B' },
   { id: 'toggleGraphPane', label: 'Toggle Graph Pane', group: 'View', scope: 'app', default: 'CmdOrCtrl+Shift+G' },
+  { id: 'toggleTerminal', label: 'Toggle Terminal', group: 'View', scope: 'app', default: 'Ctrl+`' },
   { id: 'toggleWrap', label: 'Wrap Text', group: 'View', scope: 'app', default: 'Alt+Z' },
   { id: 'nextTab', label: 'Next Tab', group: 'View', scope: 'app', default: 'Ctrl+Tab' },
   { id: 'prevTab', label: 'Previous Tab', group: 'View', scope: 'app', default: 'Ctrl+Shift+Tab' },

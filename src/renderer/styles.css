@@ -90,8 +90,8 @@ html[data-fixed-origin="true"] :is([data-edge="n"], [data-edge="w"], [data-edge=
   -webkit-app-region: drag;
   user-select: none;
 }
-#toolbar button, #toolbar select, #toolbar input { -webkit-app-region: no-drag; }
-#toolbar .group { display: inline-flex; gap: 2px; }
+:is(#toolbar, #doc-tools) button, #toolbar select, #toolbar input { -webkit-app-region: no-drag; }
+:is(#toolbar, #doc-tools) .group { display: inline-flex; gap: 2px; }
 
 .icon {
   width: 16px;
@@ -100,7 +100,7 @@ html[data-fixed-origin="true"] :is([data-edge="n"], [data-edge="w"], [data-edge=
   vertical-align: -3px;
 }
 
-#toolbar button {
+:is(#toolbar, #doc-tools) button {
   font: inherit;
   display: inline-flex;
   align-items: center;
@@ -114,17 +114,17 @@ html[data-fixed-origin="true"] :is([data-edge="n"], [data-edge="w"], [data-edge=
   cursor: pointer;
   white-space: nowrap;
 }
-#toolbar button .icon { color: var(--muted); }
-#toolbar button:hover { background: var(--hover); }
-#toolbar button:hover .icon { color: var(--fg); }
-#toolbar button:active { background: var(--active); }
-#toolbar button.icon-btn { width: 28px; padding: 0; justify-content: center; }
-#toolbar .export-btn { gap: 3px; padding: 0 6px 0 10px; background: var(--accent); color: var(--bg); font-weight: 600; }
-#toolbar .export-btn .icon { width: 12px; height: 12px; color: var(--bg); }
-#toolbar .export-btn:hover { background: color-mix(in srgb, var(--accent) 85%, var(--fg)); }
-#toolbar .export-btn:hover .icon { color: var(--bg); }
-#toolbar button.active { color: var(--accent); }
-#toolbar button.active .icon { color: var(--accent); }
+:is(#toolbar, #doc-tools) button .icon { color: var(--muted); }
+:is(#toolbar, #doc-tools) button:hover { background: var(--hover); }
+:is(#toolbar, #doc-tools) button:hover .icon { color: var(--fg); }
+:is(#toolbar, #doc-tools) button:active { background: var(--active); }
+:is(#toolbar, #doc-tools) button.icon-btn { width: 28px; padding: 0; justify-content: center; }
+#doc-tools .export-btn { gap: 3px; padding: 0 6px 0 10px; background: var(--accent); color: var(--bg); font-weight: 600; }
+#doc-tools .export-btn .icon { width: 12px; height: 12px; color: var(--bg); }
+#doc-tools .export-btn:hover { background: color-mix(in srgb, var(--accent) 85%, var(--fg)); }
+#doc-tools .export-btn:hover .icon { color: var(--bg); }
+:is(#toolbar, #doc-tools) button.active { color: var(--accent); }
+:is(#toolbar, #doc-tools) button.active .icon { color: var(--accent); }
 
 /* Segmented view switch. */
 #modes {
@@ -134,10 +134,10 @@ html[data-fixed-origin="true"] :is([data-edge="n"], [data-edge="w"], [data-edge=
   border-radius: 7px;
   background: var(--inset);
 }
-#toolbar #modes button { height: 24px; width: 30px; padding: 0; justify-content: center; border-radius: 5px; }
-#toolbar #modes button:hover { background: var(--hover); }
-#toolbar #modes button.active { background: var(--bg); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12), 0 0 0 1px var(--border); color: var(--fg); }
-#toolbar #modes button.active .icon { color: var(--fg); }
+#doc-tools #modes button { height: 24px; width: 30px; padding: 0; justify-content: center; border-radius: 5px; }
+#doc-tools #modes button:hover { background: var(--hover); }
+#doc-tools #modes button.active { background: var(--bg); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12), 0 0 0 1px var(--border); color: var(--fg); }
+#doc-tools #modes button.active .icon { color: var(--fg); }
 
 .sep { width: 1px; height: 18px; background: var(--border); margin: 0 4px; flex: none; }
 .grow { flex: 1; }
@@ -313,8 +313,8 @@ html[data-sidebar="closed"][data-sidebar-peek="true"] #sidebar {
 }
 
 #tree { flex: 1; overflow: auto; padding: 2px 0 8px; }
-#tree ul { list-style: none; margin: 0; padding: 0; }
-#tree .row {
+:is(#tree, #remote-tree) ul { list-style: none; margin: 0; padding: 0; }
+:is(#tree, #remote-tree) .row {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -325,15 +325,15 @@ html[data-sidebar="closed"][data-sidebar-peek="true"] #sidebar {
   white-space: nowrap;
   cursor: pointer;
 }
-#tree .row:hover { background: var(--hover); }
-#tree .row.active { background: var(--highlight, var(--selection)); color: var(--fg); }
-#tree .row .icon { width: 15px; height: 15px; color: var(--muted); }
-#tree .row.active .icon { color: var(--fg); }
-#tree .chevron { width: 12px; height: 12px; margin-left: -2px; flex: none; display: inline-flex; color: var(--muted); }
-#tree .chevron .icon { width: 12px; height: 12px; transition: transform .12s; }
-#tree li[aria-expanded="true"] > .row .chevron .icon { transform: rotate(90deg); }
-#tree .name { overflow: hidden; text-overflow: ellipsis; }
-#tree .empty {
+:is(#tree, #remote-tree) .row:hover { background: var(--hover); }
+:is(#tree, #remote-tree) .row.active { background: var(--highlight, var(--selection)); color: var(--fg); }
+:is(#tree, #remote-tree) .row .icon { width: 15px; height: 15px; color: var(--muted); }
+:is(#tree, #remote-tree) .row.active .icon { color: var(--fg); }
+:is(#tree, #remote-tree) .chevron { width: 12px; height: 12px; margin-left: -2px; flex: none; display: inline-flex; color: var(--muted); }
+:is(#tree, #remote-tree) .chevron .icon { width: 12px; height: 12px; transition: transform .12s; }
+:is(#tree, #remote-tree) li[aria-expanded="true"] > .row .chevron .icon { transform: rotate(90deg); }
+:is(#tree, #remote-tree) .name { overflow: hidden; text-overflow: ellipsis; }
+:is(#tree, #remote-tree) .empty {
   height: 28px;
   line-height: 28px;
   padding-left: calc(30px + var(--depth) * 14px);
@@ -609,6 +609,64 @@ html[data-graph-pane="closed"] :is(#graph-pane, #graph-split) { display: none; }
   border-right: 1px solid var(--border);
 }
 #panes[data-mode="edit"] #editor { border-right: none; }
+
+/* ---- Terminal panel ---- */
+#term-split { height: 5px; margin: -2px 0; flex: none; cursor: row-resize; z-index: 1; }
+#term-split:hover { background: var(--accent); opacity: .4; }
+#terminal-pane {
+  height: var(--term-h, 240px);
+  /* A height saved in a bigger window still leaves the editor room in a smaller one. */
+  max-height: calc(100% - 120px);
+  flex: none;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--border);
+  background: var(--bg);
+}
+html:not([data-terminal="panel"]):not([data-terminal="max"]) :is(#terminal-pane, #term-split) { display: none; }
+/* Maximized: the terminal takes the document area (the explorer is hidden by sidebar.ts holdSidebar). */
+html[data-terminal="max"] :is(#panes, #term-split) { display: none; }
+html[data-terminal="max"] #terminal-pane { flex: 1; height: auto; max-height: none; border-top: none; }
+/* Minimized: a chip in the status bar brings it back. */
+#term-tray {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 18px;
+  padding: 0 8px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--bg);
+  color: var(--fg);
+  font: inherit;
+  cursor: pointer;
+}
+#term-tray[hidden] { display: none; }
+#term-tray:hover { border-color: var(--accent); color: var(--accent); }
+#term-tray .icon { width: 11px; height: 11px; }
+#tabbar .term-tab > .icon { width: 13px; height: 13px; flex: none; }
+#terminal-pane .tp-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 26px;
+  padding: 0 4px 0 10px;
+  flex: none;
+  background: var(--bar-bg);
+  color: var(--muted);
+  font-size: calc(var(--ui-size) - 1.5px);
+}
+#terminal-pane .tp-head > .icon-slot .icon { width: 12px; height: 12px; }
+#terminal-pane .tp-title { flex: 1; min-width: 0; font-weight: 600; }
+#terminal-pane .tp-head button { display: flex; border: none; background: none; color: var(--muted); padding: 3px; border-radius: 4px; cursor: pointer; }
+#terminal-pane .tp-head button:hover { background: var(--hover); color: var(--fg); }
+#terminal-pane .tp-head button .icon { width: 13px; height: 13px; }
+#terminal-pane .tp-body { flex: 1; min-height: 0; padding: 4px 0 0 10px; }
+#terminal-pane .xterm { height: 100%; }
+/* xterm paints its viewport and scroll shadow black; the panel's theme background shows instead. */
+#terminal-pane .xterm .xterm-viewport { background-color: transparent; }
+#terminal-pane { --vscode-scrollbar-shadow: transparent; }
 #editor .cm-editor { height: 100%; font-size: var(--editor-size); }
 #editor .cm-scroller { overflow: auto; font-family: var(--editor-font); font-weight: var(--editor-weight, 400); line-height: 1.5; }
 #editor .cm-content { padding: 16px 0; }
@@ -816,7 +874,7 @@ html[data-graph-pane="closed"] :is(#graph-pane, #graph-split) { display: none; }
 #settings .kb-actions button { padding: 4px; color: var(--muted); display: inline-flex; }
 #settings .kb-actions button:disabled { opacity: .35; cursor: default; }
 /* TOC in a file that is not Markdown. */
-#toolbar button:disabled { opacity: .35; cursor: default; pointer-events: none; }
+:is(#toolbar, #doc-tools) button:disabled { opacity: .35; cursor: default; pointer-events: none; }
 #settings .kb-actions .icon { width: 13px; height: 13px; }
 #settings .kb-warn { grid-column: 1 / -1; font-size: 11px; color: #e5534b; margin-top: -2px; }
 #settings kbd { font: inherit; font-size: 11px; padding: 1px 6px; border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 4px; background: var(--inset); }
@@ -1070,6 +1128,7 @@ html[data-graph-pane="closed"] :is(#graph-pane, #graph-split) { display: none; }
 .ctx-check { width: 14px; text-align: center; color: var(--accent); font-size: calc(var(--ui-size) - 1px); }
 .ctx-label { flex: 1; white-space: nowrap; }
 .ctx-arrow { color: var(--muted); }
+.ctx-hint { margin-left: 24px; color: var(--muted); font-size: calc(var(--ui-size) - 1.5px); white-space: nowrap; }
 .ctx-sep { height: 1px; margin: 4px 6px; background: var(--border); }
 .ctx-sub {
   display: none;
@@ -1169,7 +1228,7 @@ html[data-graph-pane="closed"] :is(#graph-pane, #graph-split) { display: none; }
 #msgbox .mb-icon { width: 44px; height: 44px; flex: none; border-radius: 10px; }
 #msgbox .mb-text { min-width: 0; padding-top: 2px; }
 #msgbox .mb-title { font-size: 14px; font-weight: 600; line-height: 1.4; overflow-wrap: anywhere; }
-#msgbox .mb-detail { margin-top: 5px; color: var(--muted); line-height: 1.5; overflow-wrap: anywhere; }
+#msgbox .mb-detail { margin-top: 5px; color: var(--muted); line-height: 1.5; overflow-wrap: anywhere; white-space: pre-wrap; }
 #msgbox .mb-detail[hidden] { display: none; }
 #msgbox .mb-buttons { display: flex; justify-content: flex-end; gap: 8px; padding: 12px 18px 16px; border-top: 1px solid var(--border); background: var(--bar-bg); border-radius: 0 0 12px 12px; }
 #msgbox .mb-buttons button {
@@ -1374,3 +1433,315 @@ html[data-graph-pane="closed"] :is(#graph-pane, #graph-split) { display: none; }
   margin: 0 auto;
   background: var(--bar-bg);
 }
+
+/* ---- Remote section (explorer, SSH) ---- */
+#remote { flex: 0 1 auto; min-height: 34px; max-height: 50%; display: flex; flex-direction: column; border-top: 1px solid var(--border); }
+#remote[data-state="on"] { flex: 1 1 0; }
+#sidebar[data-folded="true"] #remote { flex: 1 1 0; }
+#remote-head { display: flex; align-items: center; gap: 2px; height: 34px; padding: 0 6px 0 8px; flex: none; }
+#remote-connect {
+  display: flex; align-items: center; gap: 6px; min-width: 0; flex: 1;
+  height: 26px; padding: 0 6px; border: none; border-radius: 6px; background: none; color: var(--fg); font: inherit; font-weight: 600; cursor: pointer;
+}
+#remote-connect:hover { background: var(--hover); }
+#remote-connect .rh-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#remote-connect .icon { width: 14px; height: 14px; color: var(--muted); flex: none; }
+#remote[data-state="on"] #remote-connect > .icon-slot:first-child .icon { color: var(--accent); }
+#remote[data-state="connecting"] #remote-connect .rh-label { color: var(--muted); font-weight: 400; }
+#remote .rh-btn { display: none; width: 24px; height: 24px; padding: 0; align-items: center; justify-content: center; border: none; border-radius: 6px; background: none; color: var(--muted); cursor: pointer; }
+#remote[data-state="on"] .rh-btn { display: inline-flex; }
+#remote .rh-btn:hover { background: var(--hover); color: var(--fg); }
+#remote .rh-btn .icon { width: 13px; height: 13px; }
+#remote-forwards { display: flex; flex-wrap: wrap; gap: 4px; padding: 0 10px 4px; }
+#remote-forwards:empty { display: none; }
+#remote-forwards .rf {
+  font: inherit; font-size: calc(var(--ui-size) - 2px); padding: 1px 7px; border-radius: 9px; cursor: pointer;
+  border: 1px solid var(--border); background: var(--bg); color: var(--muted);
+}
+#remote-forwards .rf.on { border-color: var(--accent); color: var(--accent); }
+#remote-forwards .rf.error { border-color: #e5534b; color: #e5534b; }
+#remote-tree { flex: 1; min-height: 0; overflow: auto; padding: 0 0 8px; }
+#remote-tree .remote-path { padding: 0 16px 4px; color: var(--muted); font-size: calc(var(--ui-size) - 2px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; direction: rtl; text-align: left; }
+#remote-tree .size { margin-left: auto; padding-left: 8px; color: var(--muted); font-size: calc(var(--ui-size) - 2px); }
+#remote-tree .remote-error { padding: 4px 16px 8px; color: #e5534b; font-size: calc(var(--ui-size) - 1.5px); line-height: 1.4; white-space: pre-wrap; }
+#remote-tree .row.drop-target, #remote-tree.drop-root .remote-path { background: color-mix(in srgb, var(--accent) 18%, transparent); color: var(--fg); border-radius: 8px; }
+
+/* ---- Transfers chip and panel (status bar) ---- */
+#xfer-chip {
+  display: flex; align-items: center; gap: 4px; height: 18px; padding: 0 8px; margin-right: 6px;
+  border: 1px solid var(--accent); border-radius: 9px; background: var(--bg); color: var(--accent); font: inherit; cursor: pointer;
+}
+#xfer-chip[hidden] { display: none; }
+#xfer-chip.warn { border-color: #e5534b; color: #e5534b; }
+#xfer-chip .icon { width: 11px; height: 11px; }
+.xfer-panel {
+  position: fixed; z-index: 50; width: min(420px, 90vw); max-height: 60vh; overflow: auto;
+  border: 1px solid var(--border); border-radius: 10px; background: var(--bg); color: var(--fg);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, .25); font-family: var(--ui-font); font-size: calc(var(--ui-size) - 1px);
+}
+.xfer-panel .xf-row { display: flex; align-items: flex-start; gap: 8px; padding: 10px 12px; border-bottom: 1px solid var(--border); }
+.xfer-panel .xf-row > .icon { width: 14px; height: 14px; margin-top: 2px; color: var(--accent); flex: none; }
+.xfer-panel .xf-main { flex: 1; min-width: 0; }
+.xfer-panel .xf-name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.xfer-panel .xf-where, .xfer-panel .xf-status { color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: calc(var(--ui-size) - 2px); }
+.xfer-panel .xf-row.failed .xf-status { color: #e5534b; white-space: normal; }
+.xfer-panel .xf-row.done .xf-status { color: var(--accent); }
+.xfer-panel .xf-bar { height: 4px; margin: 5px 0 3px; border-radius: 2px; background: var(--inset); overflow: hidden; }
+.xfer-panel .xf-bar i { display: block; height: 100%; background: var(--accent); transition: width .2s; }
+.xfer-panel button { font: inherit; padding: 3px 9px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--fg); cursor: pointer; flex: none; }
+.xfer-panel button:hover { background: var(--hover); }
+.xfer-panel .xf-foot { display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; color: var(--muted); background: var(--bar-bg); }
+
+/* ---- Settings › SSH ---- */
+#settings .ssh-top { display: flex; align-items: center; justify-content: space-between; margin: 16px 0 12px; }
+#settings .ssh-top h3 { margin: 0; }
+#settings .ssh-warn { margin: 0 0 12px; padding: 8px 12px; border-radius: 8px; background: color-mix(in srgb, #e5534b 10%, transparent); color: #e5534b; line-height: 1.45; }
+#settings .ssh-warn[hidden], #settings [hidden].ssh-btn, #settings [hidden].ssh-ghost { display: none; }
+#settings .ssh-sub { color: var(--muted); font-size: calc(var(--ui-size) - 1.5px); font-weight: 400; }
+#settings .ssh-opt { color: var(--muted); font-size: calc(var(--ui-size) - 2px); margin-left: 4px; }
+#settings .grow { flex: 1; }
+
+/* Buttons: one filled (primary) per view, the rest quiet. */
+#settings :is(.ssh-btn, .ssh-ghost, .ssh-icon) {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 30px; padding: 0 12px;
+  font: inherit; border-radius: 7px; cursor: pointer; white-space: nowrap; flex: none;
+}
+#settings .ssh-btn { border: 1px solid var(--border); background: var(--bg); color: var(--fg); }
+#settings .ssh-btn:hover { background: var(--hover); }
+#settings .ssh-btn.primary { background: var(--accent); border-color: var(--accent); color: var(--bg); font-weight: 600; }
+#settings .ssh-btn.primary:hover { filter: brightness(1.08); }
+#settings .ssh-btn .icon, #settings .ssh-ghost .icon { width: 14px; height: 14px; }
+#settings .ssh-ghost { border: 1px solid transparent; background: none; color: var(--muted); padding: 0 8px; }
+#settings .ssh-ghost:hover { background: var(--hover); color: var(--fg); }
+#settings .ssh-ghost.danger { color: #e5534b; }
+#settings .ssh-ghost.danger:hover { background: color-mix(in srgb, #e5534b 10%, transparent); }
+#settings .ssh-icon { width: 28px; padding: 0; border: none; background: none; color: var(--muted); }
+#settings .ssh-icon:hover { background: var(--hover); color: var(--fg); }
+#settings .ssh-icon .icon { width: 13px; height: 13px; }
+#settings :is(.ssh-btn, .ssh-ghost):disabled { opacity: .5; cursor: default; }
+
+/* Host list. */
+#settings .ssh-hosts { list-style: none; margin: 0 0 16px; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+#settings .ssh-hosts li {
+  display: flex; align-items: center; gap: 12px; padding: 10px 10px 10px 12px; border-radius: 10px; cursor: pointer;
+  border: 1px solid color-mix(in srgb, var(--border) 70%, transparent); background: var(--bg);
+}
+#settings .ssh-hosts li:hover { border-color: var(--border); background: color-mix(in srgb, var(--hover) 50%, var(--bg)); }
+#settings .ssh-hosts .sh-icon { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 8px; background: color-mix(in srgb, var(--accent) 12%, transparent); flex: none; }
+#settings .ssh-hosts .sh-icon .icon { width: 16px; height: 16px; color: var(--accent); }
+#settings .ssh-hosts .sh-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+#settings .ssh-hosts .sh-name { font-weight: 600; }
+#settings .ssh-hosts .sh-addr { color: var(--muted); font-size: calc(var(--ui-size) - 1.5px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--editor-font); }
+#settings .ssh-hosts .sh-badges { display: flex; gap: 4px; flex-wrap: wrap; justify-content: flex-end; }
+#settings .ssh-badge { padding: 1px 7px; border-radius: 9px; font-size: calc(var(--ui-size) - 2.5px); color: var(--muted); background: color-mix(in srgb, var(--fg) 7%, transparent); white-space: nowrap; }
+#settings .ssh-empty { flex-direction: column; align-items: flex-start !important; gap: 2px !important; cursor: default !important; color: var(--muted); border-style: dashed !important; padding: 18px !important; }
+#settings .ssh-empty b { color: var(--fg); font-weight: 600; }
+
+/* Cards. */
+#settings .ssh-card { padding: 14px; border-radius: 10px; border: 1px solid color-mix(in srgb, var(--border) 70%, transparent); background: color-mix(in srgb, var(--bar-bg) 60%, var(--bg)); display: flex; flex-direction: column; gap: 12px; }
+#settings .ssh-card-title { display: flex; align-items: center; gap: 10px; font-weight: 600; min-height: 26px; }
+#settings .ssh-card-title .ssh-sub { margin-left: 2px; }
+#settings .ssh-card-title > :is(.ssh-seg, .ssh-ghost) { margin-left: auto; }
+#settings .ssh-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+#settings .ssh-sudo input { width: 240px; }
+
+/* Editor. */
+#settings .ssh-form { display: flex; flex-direction: column; gap: 12px; margin-bottom: 8px; }
+#settings .ssh-form[hidden] { display: none; }
+#settings .ssh-form-head { display: flex; align-items: center; gap: 8px; margin: -4px 0 2px; }
+#settings .ssh-form-head h4 { margin: 0; font-size: 15px; font-weight: 600; }
+#settings .ssh-grid { display: grid; grid-template-columns: 1.1fr 2fr 1.1fr 84px; gap: 10px; }
+#settings .ssh-form label { display: flex; flex-direction: column; gap: 5px; color: var(--muted); font-size: calc(var(--ui-size) - 1.5px); min-width: 0; }
+#settings .ssh-form :is(input:not([type="checkbox"]), select), #settings .ssh-sudo input {
+  font: inherit; font-size: var(--ui-size); color: var(--fg); height: 32px; padding: 0 10px; border-radius: 7px; min-width: 0; width: 100%;
+  border: 1px solid color-mix(in srgb, var(--border) 85%, transparent); background: var(--bg); box-sizing: border-box;
+}
+#settings .ssh-sudo input { width: 240px; }
+#settings .ssh-form :is(input, select):focus-visible, #settings .ssh-sudo input:focus-visible { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent); }
+
+/* Authentication: segmented choice, then only what it needs. */
+#settings .ssh-seg { display: inline-flex; padding: 2px; gap: 2px; border-radius: 8px; background: var(--inset); font-weight: 400; }
+#settings .ssh-seg button { height: 26px; padding: 0 12px; border: none; border-radius: 6px; background: none; color: var(--muted); font: inherit; cursor: pointer; }
+#settings .ssh-seg button.active { background: var(--bg); color: var(--fg); box-shadow: 0 1px 2px rgba(0, 0, 0, .12), 0 0 0 1px var(--border); }
+#settings .ssh-form[data-auth="password"] .ssh-auth-key, #settings .ssh-form[data-auth="key"] .ssh-auth-password { display: none; }
+#settings .ssh-auth-key { display: flex; flex-direction: column; gap: 12px; }
+#settings .ssh-drop {
+  display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 9px; outline: none; cursor: text;
+  border: 1.5px dashed color-mix(in srgb, var(--border) 90%, transparent); background: var(--bg);
+}
+#settings .ssh-drop > .icon-slot .icon { width: 20px; height: 20px; color: var(--muted); }
+#settings .ssh-drop:focus { border-color: var(--accent); }
+#settings .ssh-drop.over { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, var(--bg)); }
+#settings .ssh-drop.ready { border-style: solid; }
+#settings .ssh-drop.ready > .icon-slot .icon { color: var(--accent); }
+#settings .ssh-drop-text { flex: 1; min-width: 0; }
+#settings #ssh-drop-title { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Port forwards: one line each. */
+#settings .ssh-fwds { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+#settings .ssh-fwds:empty { display: none; }
+#settings .ssh-fwds li { display: flex; align-items: center; gap: 10px; height: 38px; padding: 0 4px 0 10px; border-radius: 8px; background: var(--bg); border: 1px solid color-mix(in srgb, var(--border) 60%, transparent); }
+#settings .ssh-fwds .fw-type { width: 64px; color: var(--muted); font-size: calc(var(--ui-size) - 1.5px); }
+#settings .ssh-fwds .fw-desc { flex: 1; min-width: 0; font-family: var(--editor-font); font-size: calc(var(--ui-size) - 1px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#settings .ssh-fwd-edit { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; padding: 10px; border-radius: 8px; background: var(--bg); border: 1px solid var(--accent); }
+#settings .ssh-fwd-edit[hidden], #settings .ssh-fwd-edit [hidden] { display: none; }
+#settings .ssh-fwd-edit :is(select, input:not([type="checkbox"])) { font: inherit; height: 30px; padding: 0 8px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg); color: var(--fg); }
+#settings .ssh-fwd-edit select { width: 150px; min-width: 0; }
+#settings .ssh-fwd-edit [data-f="bindPort"], #settings .ssh-fwd-edit [data-f="port"] { width: 96px; }
+#settings .ssh-fwd-edit [data-f="host"] { width: 140px; }
+#settings .ssh-arrow { color: var(--muted); }
+#settings .ssh-check { display: inline-flex; align-items: center; gap: 5px; color: var(--muted); font-size: calc(var(--ui-size) - 1.5px); margin: 0 4px; }
+#settings .ssh-switch { position: relative; width: 30px; height: 18px; flex: none; cursor: pointer; }
+#settings .ssh-switch input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
+#settings .ssh-switch span { position: absolute; inset: 0; border-radius: 9px; background: var(--active); transition: background .15s; pointer-events: none; }
+#settings .ssh-switch span::after { content: ""; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%; background: var(--bg); box-shadow: 0 1px 2px rgba(0, 0, 0, .3); transition: transform .15s; }
+#settings .ssh-switch input:checked + span { background: var(--accent); }
+#settings .ssh-switch input:checked + span::after { transform: translateX(12px); }
+
+#settings .ssh-errors { color: #e5534b; white-space: pre-wrap; line-height: 1.45; }
+#settings .ssh-errors:empty { display: none; }
+#settings .ssh-actions { display: flex; align-items: center; gap: 8px; padding-top: 4px; }
+
+/* ---- ssh's password / trust prompts ---- */
+#ssh-prompt { width: min(460px, 92vw); padding: 0; border: 1px solid var(--border); border-radius: 12px; background: var(--bg); color: var(--fg); font-family: var(--ui-font); font-size: var(--ui-size); }
+#ssh-prompt::backdrop { background: rgba(0, 0, 0, 0.45); }
+#ssh-prompt .sp-body { display: flex; flex-direction: column; gap: 10px; padding: 20px 22px 16px; }
+#ssh-prompt .sp-title { font-size: 14px; font-weight: 600; }
+#ssh-prompt .sp-detail { margin: 0; color: var(--muted); font-family: var(--editor-font); font-size: calc(var(--ui-size) - 1.5px); white-space: pre-wrap; overflow-wrap: anywhere; max-height: 40vh; overflow: auto; }
+#ssh-prompt .sp-detail[hidden], #ssh-prompt .sp-input[hidden], #ssh-prompt .sp-save[hidden] { display: none; }
+#ssh-prompt .sp-input { font: inherit; padding: 7px 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--fg); }
+#ssh-prompt .sp-input:focus-visible { outline: none; border-color: var(--accent); }
+#ssh-prompt .sp-save { display: flex; align-items: center; gap: 6px; color: var(--muted); }
+#ssh-prompt .sp-buttons { display: flex; justify-content: flex-end; gap: 8px; padding: 12px 18px 16px; border-top: 1px solid var(--border); background: var(--bar-bg); border-radius: 0 0 12px 12px; }
+#ssh-prompt .sp-buttons button { font: inherit; min-width: 84px; padding: 6px 14px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--fg); cursor: pointer; }
+#ssh-prompt .sp-buttons button.primary { background: var(--accent); border-color: var(--accent); color: var(--bg); font-weight: 600; }
+
+/* ==== Layout: one top bar, floating cards ===================================
+   The window is the bar colour; the explorer, the editor and the graph are
+   rounded cards on it, with a small gap, under a single top bar that carries
+   the tabs. */
+#app { background: var(--bar-bg); }
+#toolbar { height: 42px; padding: 0 8px; gap: 6px; border-bottom: none; background: transparent; }
+#toolbar .drag { align-self: stretch; }
+#workspace { gap: 6px; padding: 0 6px 6px; }
+#sidebar, #docs, #graph-pane {
+  background: var(--bg);
+  border: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+  border-radius: 10px;
+  overflow: hidden;
+}
+#sidebar { border-right: 1px solid color-mix(in srgb, var(--border) 70%, transparent); }
+#sidebar-split, #graph-split { width: 6px; margin: 0 -6px; z-index: 2; background: transparent; }
+#sidebar-split:hover, #graph-split:hover { background: color-mix(in srgb, var(--accent) 40%, transparent); }
+#sidebar-rail { background: transparent; border-right: none; border-radius: 8px; }
+html[data-sidebar="closed"][data-sidebar-peek="true"] #sidebar { top: 0; bottom: 6px; left: 28px; }
+
+/* Tabs: pills in the top bar. */
+#toolbar #tabbar {
+  flex: 0 1 auto; min-width: 0; height: 42px; align-items: center; gap: 4px;
+  background: transparent; border-bottom: none; -webkit-app-region: no-drag;
+}
+#toolbar #tabbar .tab {
+  height: 28px; min-width: 0; max-width: 200px; padding: 0 4px 0 10px; gap: 6px;
+  border: none; border-radius: 8px; color: var(--muted); box-shadow: none;
+}
+#toolbar #tabbar .tab:hover { background: var(--hover); }
+#toolbar #tabbar .tab.active { background: var(--bg); color: var(--fg); box-shadow: 0 0 0 1px color-mix(in srgb, var(--border) 80%, transparent); }
+#toolbar #tabbar .tab.active::after { display: none; }
+#toolbar #tabbar .tab.drop-before { box-shadow: inset 2px 0 0 var(--accent); }
+#toolbar #tabbar .tab.drop-after { box-shadow: inset -2px 0 0 var(--accent); }
+#toolbar #tabbar .tab-close { width: 18px; height: 18px; border-radius: 5px; }
+#toolbar #tabbar .tab-new { width: 26px; height: 26px; border-radius: 7px; font-size: 17px; }
+
+/* Search box in the top bar: filters the explorer. */
+#sidebar-search.top-search {
+  display: flex; align-items: center; gap: 6px; width: 220px; height: 28px; margin: 0 4px 0 0; padding: 0 10px;
+  border-radius: 8px; background: var(--bg); border: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+  color: var(--muted); cursor: text; -webkit-app-region: no-drag; flex: none;
+}
+#sidebar-search.top-search:focus-within { border-color: var(--accent); }
+#sidebar-search.top-search .icon { width: 13px; height: 13px; }
+#sidebar-search input { all: unset; flex: 1; min-width: 0; color: var(--fg); font-size: calc(var(--ui-size) - 1px); }
+#sidebar-search input::placeholder { color: var(--muted); }
+#sidebar-search input::-webkit-search-cancel-button { -webkit-appearance: none; }
+
+/* Editor tool strip: open/save always, Markdown tools for notes only. */
+#doc-tools {
+  display: flex; align-items: center; gap: 4px; height: 38px; padding: 0 8px; flex: none;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+  font-size: calc(var(--ui-size) - 0.5px); user-select: none;
+}
+#doc-tools button {
+  font: inherit; display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 8px;
+  border: 1px solid transparent; border-radius: 6px; background: transparent; color: var(--fg); cursor: pointer; white-space: nowrap;
+}
+#doc-tools .md-tools { align-items: center; gap: 2px; }
+#doc-tools .export-btn { margin-right: 6px; }
+#doc-tools #filename { display: none; }
+html[data-doc-kind="code"] #doc-tools .md-tools { display: none; }
+html[data-terminal="max"] #doc-tools { display: none; }
+
+/* Explorer header: folder name and its actions. */
+#sidebar-section { margin: 6px 6px 4px; padding: 0 0 0 6px; height: 32px; gap: 0; }
+#sidebar-section #root-name { gap: 6px; font-weight: 600; }
+#sidebar-section #root-name .icon { color: var(--muted); }
+#root-path { display: none; }
+#sidebar-section .sb-icon, #sidebar-section #root-menu { width: 26px; height: 26px; flex: none; }
+#sidebar-section .sb-icon .icon { width: 14px; height: 14px; }
+#tree { padding-top: 0; }
+
+/* Graph folders: a small badge after the name, no bar or tint. */
+#tree .row.graph-folder, #tree .row.graph-folder:hover { box-shadow: none; background: none; }
+#tree .row.graph-folder:hover { background: var(--hover); }
+#tree .row.graph-folder.graph-active { background: var(--hover); }
+#tree .row.graph-folder > .icon { color: var(--muted); }
+#tree .row.graph-folder.graph-active .name { font-weight: 400; }
+#tree .graph-badge { margin-left: 6px; }
+
+/* Graph pane: on the right, beside the editor. */
+#graph-pane { width: var(--graph-w, 380px); height: auto; margin: 0; flex: none; display: flex; flex-direction: column; background: var(--graph-bg, var(--bg)); }
+html[data-graph-pane="closed"] :is(#graph-pane, #graph-split) { display: none; }
+#graph-pane .gp-head { height: 34px; padding: 0 6px 0 12px; border-bottom: 1px solid color-mix(in srgb, var(--border) 60%, transparent); background: transparent; }
+#graph-pane .gp-close { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; margin-left: 6px; border: none; border-radius: 6px; background: none; color: var(--muted); cursor: pointer; }
+#graph-pane .gp-close:hover { background: var(--hover); color: var(--fg); }
+#graph-pane .gp-close .icon { width: 12px; height: 12px; color: inherit; }
+
+/* Status bar: breadcrumbs of the open file's path. */
+#statusbar { height: 28px; padding: 0 8px; border-top: none; background: transparent; gap: 4px; }
+#status-path { display: flex; align-items: center; gap: 2px; min-width: 0; overflow: hidden; }
+#status-path:empty::before { content: "Unsaved note"; font-style: italic; padding-left: 4px; }
+#status-path .crumb {
+  font: inherit; padding: 2px 8px; border-radius: 6px; border: none; background: none; color: var(--muted);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 220px; flex: none;
+}
+#status-path button.crumb { cursor: pointer; background: color-mix(in srgb, var(--fg) 6%, transparent); }
+#status-path button.crumb:hover { background: var(--hover); color: var(--fg); }
+#status-path .crumb.current { color: var(--fg); }
+#status-path .crumb-sep { color: var(--muted); opacity: .6; padding: 0 2px; }
+
+/* ---- Copy / Run on code blocks (notes only) ---- */
+.code-actions { display: inline-flex; gap: 4px; font-family: var(--ui-font); font-size: calc(var(--ui-size) - 2px); line-height: 1; user-select: none; }
+.code-actions button {
+  display: inline-flex; align-items: center; gap: 4px; height: 22px; padding: 0 8px; border-radius: 6px; cursor: pointer;
+  border: 1px solid color-mix(in srgb, var(--border) 80%, transparent); background: var(--bg); color: var(--muted); font: inherit;
+}
+.code-actions button:hover { color: var(--fg); background: var(--hover); }
+.code-actions button .icon { width: 11px; height: 11px; }
+.code-actions .code-run { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 45%, transparent); }
+.code-actions .code-run:hover { color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, var(--bg)); }
+.code-actions button.done { color: var(--accent); }
+/* Preview: top-right of the block, shown on hover (Run always shows). */
+.markdown-body pre.has-code-actions { position: relative; }
+.markdown-body pre .code-actions { position: absolute; top: 8px; right: 8px; }
+.markdown-body pre .code-actions .code-copy { opacity: 0; transition: opacity .12s; }
+.markdown-body pre:hover .code-actions .code-copy { opacity: 1; }
+/* Live preview: at the end of the opening fence line. */
+.cm-line .code-actions { float: right; margin-top: 2px; }
+@media print { .code-actions { display: none !important; } }
+/* A narrow editor (graph pane open, small window): the tool strip keeps its icons only. */
+#docs { container-type: inline-size; }
+@container (max-width: 700px) {
+  #doc-tools .md-tools button:not(.export-btn) { font-size: 0; gap: 0; width: 28px; padding: 0; justify-content: center; }
+}
+#settings .ssh-hosts li.just-saved { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 15%, transparent); }
+#settings .ssh-saved { padding: 1px 8px; border-radius: 9px; background: var(--accent); color: var(--bg); font-size: calc(var(--ui-size) - 2.5px); font-weight: 600; }

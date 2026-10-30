@@ -1,10 +1,12 @@
 import type { FontFamily, LlmProvider, NerdFont, Theme } from '../preload/index'
 import { settings, updateSettings } from './appearance'
 import { renderIconSets, renderThemeGrid } from './themes/settings'
-import { alertBox, errorMessage } from './messageBox'
+import { alertBox, confirmBox, errorMessage } from './messageBox'
 import { renderKeybindings } from './keybindingsPage'
+import { syncSsh } from './settingsSsh'
 
-type Target = 'uiFont' | 'editorFont'
+type Target = 'uiFont' | 'editorFont' | 'terminalFont'
+const TARGETS: Target[] = ['uiFont', 'editorFont', 'terminalFont']
 
 const dialog = document.getElementById('settings') as HTMLDialogElement
 let catalogue: NerdFont[] | null = null
@@ -13,7 +15,8 @@ const progress = new Map<string, number>()
 
 const $ = <T extends HTMLElement>(sel: string): T => dialog.querySelector(sel) as T
 
-export function openSettings(): void {
+/** Open Settings, on `page` (a section name such as "ssh") when given. */
+export function openSettings(page?: string): void {
   syncTheme()
   syncBorder()
   authorInput.value = settings().author
@@ -29,7 +32,9 @@ export function openSettings(): void {
   renderIconSets()
   renderKeybindings()
   void refreshFamilies()
+  void syncSsh()
   dialog.showModal()
+  if (page) dialog.querySelector<HTMLButtonElement>(`.st-nav button[data-page="${page}"]`)?.click()
   // Don't land focus (and its ring) on the close button.
   $('.st-pages').focus()
 }
@@ -190,7 +195,7 @@ $('#border-reset').addEventListener('click', () => {
 
 // ---- Font sizes ----------------------------------------------------------------
 
-type SizeKey = 'uiFontSize' | 'editorFontSize'
+type SizeKey = 'uiFontSize' | 'editorFontSize' | 'terminalFontSize'
 const sizeInputs = [...dialog.querySelectorAll<HTMLInputElement>('input[data-size]')]
 
 function syncSizes(): void {
@@ -211,14 +216,14 @@ for (const i of sizeInputs) {
 
 // ---- Font weights ----------------------------------------------------------------
 
-type WeightKey = 'uiFontWeight' | 'editorFontWeight'
+type WeightKey = 'uiFontWeight' | 'editorFontWeight' | 'terminalFontWeight'
 const WEIGHT_NAMES: Record<number, string> = {
   100: 'Thin', 200: 'Extra Light', 300: 'Light', 400: 'Regular', 450: 'Retina', 500: 'Medium', 600: 'Semi Bold', 700: 'Bold', 800: 'Extra Bold', 900: 'Black'
 }
 /** What the built-in font stacks offer; the system picks its nearest face. */
 const DEFAULT_WEIGHTS = [300, 400, 500, 600, 700]
 const weightSelects = [...dialog.querySelectorAll<HTMLSelectElement>('select[data-weight]')]
-const fontOf = (key: WeightKey): Target => (key === 'uiFontWeight' ? 'uiFont' : 'editorFont')
+const fontOf = (key: WeightKey): Target => key.replace('Weight', '') as Target
 
 /** Each weight select lists the upright weights the chosen family really has. */
 function syncWeights(): void {
@@ -248,7 +253,7 @@ for (const sel of weightSelects) {
 
 async function refreshFamilies(): Promise<void> {
   families = await window.api.installedFamilies()
-  for (const target of ['uiFont', 'editorFont'] as Target[]) {
+  for (const target of TARGETS) {
     const sel = $<HTMLSelectElement>(`select[data-target=${target}]`)
     const cur = settings()[target]
     sel.innerHTML = '<option value="">Default</option>'
@@ -270,7 +275,7 @@ dialog.querySelectorAll<HTMLSelectElement>('select[data-target]').forEach((sel) 
   })
 })
 
-/** Prefer the proportional face for the UI and the mono face for the editor. */
+/** Prefer the proportional face for the UI and the mono face for the editor and terminal. */
 function pickFamily(pkgFamilies: FontFamily[], target: Target): string {
   const want = target === 'uiFont' ? / Propo$/ : / Mono$/
   return (pkgFamilies.find((f) => want.test(f.family)) ?? pkgFamilies[0]).family
@@ -324,12 +329,12 @@ async function install(name: string, target: Target): Promise<void> {
 window.api.onFontProgress(({ name, pct }) => {
   if (!progress.has(name)) return
   progress.set(name, pct)
-  for (const target of ['uiFont', 'editorFont'] as Target[]) {
+  for (const target of TARGETS) {
     renderResults(target, $<HTMLInputElement>(`input[data-target=${target}]`).value)
   }
 })
 
-for (const target of ['uiFont', 'editorFont'] as Target[]) {
+for (const target of TARGETS) {
   const input = $<HTMLInputElement>(`input[data-target=${target}]`)
   const list = $<HTMLUListElement>(`ul[data-target=${target}]`)
 
@@ -370,3 +375,23 @@ for (const target of ['uiFont', 'editorFont'] as Target[]) {
 }
 
 $('#settings-close').addEventListener('click', () => dialog.close())
+
+// ---- Backup -----------------------------------------------------------------------------
+
+$('#backup-export').addEventListener('click', async () => {
+  try {
+    const done = await window.api.backupExport()
+    if (done) await alertBox('Settings exported', done)
+  } catch (err) {
+    await alertBox('Could not export', errorMessage(err))
+  }
+})
+$('#backup-import').addEventListener('click', async () => {
+  try {
+    const done = await window.api.backupImport()
+    if (!done) return
+    if (await confirmBox('Settings imported', `${done}\n\nRestart Tendril now to apply them? Open tabs are kept.`, { ok: 'Restart' })) window.api.relaunch()
+  } catch (err) {
+    await alertBox('Could not import', errorMessage(err))
+  }
+})

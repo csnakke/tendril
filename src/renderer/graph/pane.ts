@@ -5,8 +5,9 @@ import { closeOverlay, isOverlayOpen, openOverlay, update as updateOverlay } fro
 import { GraphView } from './view'
 
 /**
- * The graph pane under the explorer. Empty until a graph folder is clicked in
- * the tree (sidebar.ts sends `graph-folder-selected`); then that folder's tag
+ * The graph pane on the right of the window, opened from the top bar's graph
+ * button. Empty until a graph folder is clicked in the explorer (sidebar.ts
+ * sends `graph-folder-selected`); then that folder's tag
  * graph revolves on its own, with no mouse input. A click zooms it into the
  * overlay. It stops drawing whenever it can't be seen.
  */
@@ -18,7 +19,7 @@ const emptyEl = $('#graph-pane .gp-empty')
 const titleEl = $('#graph-pane .gp-title')
 const countEl = $('#graph-pane .gp-count')
 const splitEl = $('#graph-split')
-const switchEl = $<HTMLInputElement>('#graph-switch input')
+const buttonEl = $<HTMLButtonElement>('#toolbar button[data-cmd="toggleGraphPane"]')
 
 let dir: string | null = null
 let data: GraphData | null = null
@@ -74,7 +75,7 @@ function clear(): void {
   titleEl.textContent = 'Graph'
   titleEl.title = ''
   countEl.textContent = ''
-  showEmpty('Click a graph folder to show its graph.', 'Right-click a folder › Enable Graph Here')
+  showEmpty('Click a graph folder in the explorer to show its graph here.', 'No graph folder yet? Right-click a folder › Enable Graph Here')
 }
 
 // ---- Visibility --------------------------------------------------------------------
@@ -113,7 +114,7 @@ document.addEventListener('graph-overlay', sync)
 
 function applyOpen(open: boolean): void {
   document.documentElement.dataset.graphPane = open ? 'open' : 'closed'
-  switchEl.checked = open
+  buttonEl.classList.toggle('active', open)
   sync()
 }
 
@@ -123,26 +124,24 @@ export function toggleGraphPane(): void {
   void updateSettings({ graphPaneOpen: open })
 }
 
-switchEl.addEventListener('change', () => {
-  if (switchEl.checked !== settings().graphPaneOpen) toggleGraphPane()
-})
+$('#graph-pane .gp-close').addEventListener('click', () => settings().graphPaneOpen && toggleGraphPane())
 
 splitEl.addEventListener('pointerdown', (e) => {
   if (e.button !== 0) return
   e.preventDefault()
   splitEl.setPointerCapture(e.pointerId)
-  const startY = e.clientY
-  const startH = paneEl.getBoundingClientRect().height
-  const max = Math.max(160, (paneEl.parentElement?.getBoundingClientRect().height ?? 600) - 200)
-  let height = startH
+  const startX = e.clientX
+  const startW = paneEl.getBoundingClientRect().width
+  const max = Math.max(240, (paneEl.parentElement?.getBoundingClientRect().width ?? 1000) - 420)
+  let width = startW
   const move = (ev: PointerEvent): void => {
-    height = Math.min(max, Math.max(120, startH - (ev.clientY - startY)))
-    document.documentElement.style.setProperty('--graph-h', `${height}px`)
+    width = Math.min(max, Math.max(220, startW - (ev.clientX - startX)))
+    document.documentElement.style.setProperty('--graph-w', `${width}px`)
   }
   const up = (): void => {
     splitEl.removeEventListener('pointermove', move)
     splitEl.removeEventListener('pointerup', up)
-    void updateSettings({ graphPaneHeight: Math.round(height) })
+    void updateSettings({ graphPaneWidth: Math.round(width) })
   }
   splitEl.addEventListener('pointermove', move)
   splitEl.addEventListener('pointerup', up)
@@ -169,7 +168,7 @@ canvasEl.addEventListener('click', () => {
 export function initGraphPane(open: (path: string) => void): void {
   openNote = open
   const s = settings()
-  document.documentElement.style.setProperty('--graph-h', `${s.graphPaneHeight}px`)
+  document.documentElement.style.setProperty('--graph-w', `${s.graphPaneWidth}px`)
   applyOpen(s.graphPaneOpen)
   clear()
 }
