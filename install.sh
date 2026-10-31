@@ -39,9 +39,16 @@
 #   TENDRIL_REF          branch or tag to build       (default: main; ignored for a local folder)
 #   TENDRIL_NODE_IMAGE   Node image used for building (default: node:22-bookworm)
 #   TENDRIL_PIN          1 = pin to the GNOME dock    (default: 1; Linux only)
-#   TENDRIL_SKIP_DEPS    1 = do not install pass, rsync, … on this machine
+#   TENDRIL_SKIP_DEPS    1 = do not install pass, rsync, tmux, … on this machine
 #   TENDRIL_IMPORT       a backup (.tendril) to import after a fresh install
 #   TENDRIL_BUILD        docker or local: how to build, without asking
+
+# Run as `curl … | bash`, bash reads this script from the same pipe that is
+# its standard input, piece by piece. A command that reads standard input
+# (brew does) would swallow the rest of the script, and bash would stop there
+# without a word. The whole script is one { … } block, so bash has all of it
+# before running any of it.
+{
 
 set -euo pipefail
 
@@ -409,12 +416,12 @@ install_deps_mac() {
     then run this installer again. (Or skip them: TENDRIL_SKIP_DEPS=1.)"
   fi
   step "Installing ${pkgs[*]} with Homebrew"
-  "$brew" install "${pkgs[@]}" || warn "brew could not install ${pkgs[*]}; install them yourself for the Remote section."
+  "$brew" install "${pkgs[@]}" </dev/null || warn "brew could not install ${pkgs[*]}; install them yourself for the Remote section and the terminal's tmux."
   export PATH="$prefix/bin:$PATH"
 }
 
 if [ "$SKIP_DEPS" != 1 ]; then
-  printf '\n%sPrerequisites%s  %s(on this machine: pass, gnupg, rsync, ssh)%s\n' "$BOLD" "$RESET" "$DIM" "$RESET"
+  printf '\n%sPrerequisites%s  %s(on this machine: pass, gnupg, rsync, ssh, pinentry, tmux)%s\n' "$BOLD" "$RESET" "$DIM" "$RESET"
   if [ "$OS" = linux ]; then install_deps_linux; else install_deps_mac; fi
   have gpgconf && use_gui_pinentry
 fi
@@ -926,3 +933,6 @@ else
   info "Start it with:  open \"$INSTALL_DIR/Tendril.app\""
 fi
 info "To uninstall:   curl -fsSL https://raw.githubusercontent.com/csnakke/tendril/main/install.sh | bash -s -- --uninstall"
+
+exit 0
+}

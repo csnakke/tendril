@@ -23,6 +23,9 @@ import { exportBackup, importBackup, removeGraphMarkers } from './backup'
 import { clearOpenRouterKey, moveOpenRouterKeyToPass, saveOpenRouterKey } from './aiKey'
 import { DEFAULT_TMUX_CONF, readTmuxConf, saveTmuxConf, setTmuxColors, tmuxBinary, type TmuxColors } from './tmux'
 import type { LintKind } from '../shared/lint'
+import { addSystemPaths } from './systemPath'
+
+addSystemPaths()
 
 type Command = string
 

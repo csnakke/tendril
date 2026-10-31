@@ -250,7 +250,9 @@ favourites or pin it to the panel — on GNOME the installer pins it to the dock
 - 🔑 **Also installs on your machine (not in Docker), only what is missing,** for the [Remote section](#-remote-files-over-ssh) and the [terminal](#-terminal):
   `pass` + `gnupg`, a full `rsync` (3.1+), the OpenSSH client, a windowed `pinentry` (GPG's passphrase dialog) and `tmux`.
   Linux uses your distribution's package manager (apt, dnf, pacman, zypper, apk — asks for `sudo` once);
-  macOS uses Homebrew (`brew install rsync pass pinentry-mac`; `ssh` is built in) and asks you to install Homebrew first if it is missing.
+  macOS uses Homebrew (`brew install rsync pass pinentry-mac tmux`; `ssh` is built in) and asks you to install Homebrew first if it is missing.
+  An app started from Finder or the Dock gets only the system `PATH`, so Tendril adds Homebrew's folders (`/opt/homebrew/bin`,
+  `/usr/local/bin`, and MacPorts' `/opt/local/bin`) itself: it finds `pass`, `gpg` and the rest wherever your Terminal does.
   Tendril sets up its own password store the first time you save a key or password (see [Settings › SSH](#%EF%B8%8F-settings--ssh--saved-hosts)). `TENDRIL_SKIP_DEPS=1` skips this step.
 - 🧹 The Node image is removed afterwards — unless it was already on your machine, then it is left alone.
 - ⚙️ **Options:** every command and switch is listed in [Commands and switches](#%EF%B8%8F-commands-and-switches) below.
@@ -372,6 +374,8 @@ npm install && npm run compile && npm run build:linux    # For x86_64 bit Linux
 | Symptom | Cause | Fix |
 |---|---|---|
 | `curl … install.sh` says Docker is not reachable | Docker not running, or (Linux) you are not in the `docker` group | Start Docker; `sudo usermod -aG docker $USER` and log in again |
+| `curl … install.sh` stops right after **Prerequisites** (macOS, first install) | An older installer: `brew install` read the rest of the piped script | Fixed — the installer is read whole before it runs. With an old copy, just run the command again |
+| macOS: **"pass is not installed"** although `pass` works in Terminal | Apps started from Finder/the Dock get only the system `PATH`, without Homebrew's folders | Fixed — Tendril adds `/opt/homebrew/bin`, `/usr/local/bin` (and MacPorts') itself; reinstall to get it |
 | `sh: 1: electron-vite: not found` | `npm run build`/`compile` before installing | Run **`npm install`** first |
 | `Cannot find module …` | Half-finished or stale install | `rm -rf node_modules && npm ci` |
 | A chart shows *Chart: …* in red | The ` ```chart ` YAML could not be read (bad indentation, unknown `type`, no `data`) | Fix the line it names, or double-click it and let the chart editor rewrite it |
