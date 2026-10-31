@@ -58,6 +58,7 @@ function run(cmd: string, args: string[], opts: { input?: string; env?: Record<s
       if (timer) clearTimeout(timer)
       resolve({ code: code ?? -1, stdout: Buffer.concat(out), stderr })
     })
+    child.stdin.on('error', () => {})
     child.stdin.end(opts.input ?? '')
   })
 }

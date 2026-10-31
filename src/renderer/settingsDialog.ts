@@ -4,6 +4,7 @@ import { renderIconSets, renderThemeGrid } from './themes/settings'
 import { alertBox, confirmBox, errorMessage } from './messageBox'
 import { renderKeybindings } from './keybindingsPage'
 import { ensureStore, syncSsh } from './settingsSsh'
+import { leaveTmux, syncTmux } from './settingsTmux'
 import { addEye, hideSecret, hideSecrets, typedValue } from './reveal'
 
 type Target = 'uiFont' | 'editorFont' | 'terminalFont'
@@ -34,6 +35,7 @@ export function openSettings(page?: string): void {
   renderKeybindings()
   void refreshFamilies()
   void syncSsh()
+  void syncTmux()
   dialog.showModal()
   if (page) dialog.querySelector<HTMLButtonElement>(`.st-nav button[data-page="${page}"]`)?.click()
   // Don't land focus (and its ring) on the close button.
@@ -389,7 +391,14 @@ for (const target of TARGETS) {
   })
 }
 
-$('#settings-close').addEventListener('click', () => dialog.close())
+$('#settings-close').addEventListener('click', async () => {
+  if (await leaveTmux()) dialog.close()
+})
+// Escape: the same, so unsaved tmux changes are not lost by accident.
+dialog.addEventListener('cancel', (e) => {
+  e.preventDefault()
+  void leaveTmux().then((ok) => ok && dialog.close())
+})
 // A shown password does not stay in the closed dialog.
 dialog.addEventListener('close', () => hideSecrets(dialog))
 

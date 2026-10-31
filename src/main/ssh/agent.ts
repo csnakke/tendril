@@ -57,6 +57,7 @@ export class Agent {
       child.stderr.on('data', (d: Buffer) => (err += d.toString('utf8')))
       child.on('error', () => reject(new Error('ssh-add is not installed')))
       child.on('close', (code) => (code === 0 ? resolve() : reject(new Error(err.trim() || 'The saved key could not be loaded (wrong passphrase?)'))))
+      child.stdin.on('error', () => {})
       child.stdin.end(key.endsWith('\n') ? key : key + '\n')
     })
   }

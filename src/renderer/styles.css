@@ -1770,3 +1770,14 @@ html[data-graph-pane="closed"] :is(#graph-pane, #graph-split) { display: none; }
 #settings .ssh-link { align-self: flex-start; padding: 0; border: none; background: none; color: #e5534b; font: inherit; font-size: calc(var(--ui-size) - 1.5px); cursor: pointer; }
 #settings .ssh-link:hover { text-decoration: underline; }
 #settings .ssh-link[hidden] { display: none; }
+
+/* Settings › TMUX. */
+#settings .tmux-conf {
+  display: block; width: 100%; height: min(42vh, 380px); box-sizing: border-box; resize: vertical; padding: 10px 12px; tab-size: 4;
+  font-size: calc(var(--ui-size) - 0.5px); line-height: 1.45; color: var(--fg); background: var(--inset);
+  border: 1px solid color-mix(in srgb, var(--border) 85%, transparent); border-radius: 8px; white-space: pre; overflow: auto;
+}
+#settings .tmux-conf:focus-visible { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent); }
+#settings .tmux-actions { display: flex; align-items: center; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+#settings #tmux-state { white-space: pre-wrap; }
+#settings #tmux-state.error { color: #e5534b; }

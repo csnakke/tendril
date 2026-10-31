@@ -21,6 +21,7 @@ import { killAllTerminals, killTerminal, pasteSudo, resizeTerminal, startTermina
 import { closeRemote, registerRemote, remoteMenuItems } from './ssh/remote'
 import { exportBackup, importBackup, removeGraphMarkers } from './backup'
 import { clearOpenRouterKey, moveOpenRouterKeyToPass, saveOpenRouterKey } from './aiKey'
+import { DEFAULT_TMUX_CONF, readTmuxConf, saveTmuxConf, setTmuxColors, tmuxBinary, type TmuxColors } from './tmux'
 import type { LintKind } from '../shared/lint'
 
 type Command = string
@@ -597,6 +598,9 @@ on('term:write', (_e, id: number, data: string) => writeTerminal(id, data))
 on('term:resize', (_e, id: number, cols: number, rows: number) => resizeTerminal(id, cols, rows))
 on('term:kill', (_e, id: number) => killTerminal(id))
 handle('term:pasteSudo', (_e, id: number) => pasteSudo(id))
+on('tmux:colors', (_e, colors: TmuxColors) => void setTmuxColors(colors))
+handle('tmux:getConfig', async () => ({ text: await readTmuxConf(), defaultText: DEFAULT_TMUX_CONF, installed: !!(await tmuxBinary()) }))
+handle('tmux:saveConfig', (_e, text: string) => saveTmuxConf(text))
 
 // ---- Backup ------------------------------------------------------------------
 

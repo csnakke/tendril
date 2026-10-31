@@ -135,6 +135,7 @@
           <button type="button" data-page="templates">Templates</button>
           <button type="button" data-page="export">Export</button>
           <button type="button" data-page="ssh">SSH</button>
+          <button type="button" data-page="tmux">TMUX</button>
           <button type="button" data-page="backup">Backup</button>
           <button type="button" data-page="ai">AI</button>
         </nav>
@@ -369,11 +370,22 @@
               </div>
             </form>
           </section>
+          <section data-page="tmux">
+            <h3>TMUX</h3>
+            <p class="lead">The terminal opens in tmux with this config. It is Tendril's own tmux: <code>~/.tmux.conf</code> is not read, and a tmux you start yourself is not touched. Underneath it, Tendril gives the status bar and pane borders the theme's colours and copies tmux's copy-mode selection to the system clipboard; anything set here wins.</p>
+            <p id="tmux-missing" class="ssh-warn" hidden>tmux is not installed, so the terminal is a plain shell. Run the Tendril installer again to install it; this config is used from then on.</p>
+            <textarea id="tmux-conf" class="tmux-conf" spellcheck="false" autocomplete="off" autocapitalize="off" wrap="off" aria-label="tmux config"></textarea>
+            <div class="tmux-actions">
+              <button type="button" id="tmux-save" class="ssh-btn primary">Save</button>
+              <button type="button" id="tmux-reset" class="ssh-btn">Reset to default</button>
+              <span id="tmux-state" class="ssh-sub"></span>
+            </div>
+          </section>
           <section data-page="backup">
             <h3>Backup</h3>
             <p class="lead">Move Tendril's configuration to a fresh install, or keep a copy before uninstalling.</p>
             <div class="setting">
-              <div class="info"><div class="name">Export</div><div class="desc">Settings, SSH hosts and their port forwards, trusted hosts, imported themes and the built-in templates, in one <code>.tendril</code> file. Saved keys and passwords stay in <code>pass</code> and are not included; neither are downloaded fonts.</div></div>
+              <div class="info"><div class="name">Export</div><div class="desc">Settings, SSH hosts and their port forwards, trusted hosts, imported themes, the built-in templates and the tmux config, in one <code>.tendril</code> file. Saved keys and passwords stay in <code>pass</code> and are not included; neither are downloaded fonts.</div></div>
               <div class="control"><button type="button" id="backup-export">Export…</button></div>
             </div>
             <div class="setting">

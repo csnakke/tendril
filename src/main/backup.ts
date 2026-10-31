@@ -8,7 +8,7 @@ import { defaultTemplatesDir } from './templates'
 /**
  * A backup of Tendril's configuration in one JSON file, to bring it to a fresh
  * install: settings (SSH hosts and their forwards included), the hosts you
- * trusted, imported themes and the built-in templates folder.
+ * trusted, imported themes, the built-in templates folder and the tmux config.
  *
  * Never in it: saved keys, passwords and passphrases (they stay in `pass`;
  * after an import the hosts are marked as not having them), the OpenRouter
@@ -33,11 +33,14 @@ interface Backup {
   knownHosts: string
   themes: FileItem[]
   templates: FileItem[]
+  /** Settings › TMUX (backups from before it have none). */
+  tmuxConf?: string
 }
 
 const userData = (): string => app.getPath('userData')
 const knownHostsFile = (): string => join(userData(), 'ssh', 'known_hosts')
 const themesDir = (): string => join(userData(), 'themes')
+const tmuxConfFile = (): string => join(userData(), 'tmux.conf')
 
 /** Settings that belong to this machine or are secret: not carried over. */
 const LOCAL_ONLY: (keyof Settings)[] = ['openRouterKey', 'openRouterKeyInPass', 'sidebarRoot', 'graphFolders', 'sudoSaved']
@@ -65,7 +68,8 @@ export async function exportBackup(file: string): Promise<string> {
     settings,
     knownHosts: await fs.readFile(knownHostsFile(), 'utf8').catch(() => ''),
     themes: await readDir(themesDir(), /\.json$/),
-    templates: await readDir(defaultTemplatesDir(), /\.(md|markdown|txt)$/i)
+    templates: await readDir(defaultTemplatesDir(), /\.(md|markdown|txt)$/i),
+    tmuxConf: await fs.readFile(tmuxConfFile(), 'utf8').catch(() => undefined)
   }
   await fs.writeFile(file, JSON.stringify(backup, null, 2) + '\n', { mode: 0o600 })
   return `Exported ${s.sshHosts.length} SSH host${s.sshHosts.length === 1 ? '' : 's'}, ${backup.themes.length} theme${backup.themes.length === 1 ? '' : 's'} and ${backup.templates.length} template${backup.templates.length === 1 ? '' : 's'} to ${file}.`
@@ -121,6 +125,7 @@ export async function importBackup(file: string): Promise<string> {
       count()
     }
   }
+  if (typeof b.tmuxConf === 'string') await fs.writeFile(tmuxConfFile(), b.tmuxConf, 'utf8')
   const hosts = incoming.sshHosts?.length ?? 0
   return `Imported settings, ${hosts} SSH host${hosts === 1 ? '' : 's'}, ${themes} theme${themes === 1 ? '' : 's'} and ${templates} template${templates === 1 ? '' : 's'}.${hosts ? ' Add their keys or passwords again in Settings › SSH.' : ''}`
 }

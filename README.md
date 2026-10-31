@@ -102,7 +102,7 @@ Tendril is a deliberate merge of the features people actually use in each tool:
 | 🌐 | **Remote files over SSH** | A Remote section in the explorer: browse a server, drag to upload, right-click to download — resumable rsync transfers of any size, port forwarding, keys and passwords kept in `pass` ([details](#-remote-files-over-ssh)) |
 | 🔑 | **sudo auto-paste** | Saved sudo passwords filled in safely — locally and on servers (secret-marker prompts, one try then stop), `Ctrl+Alt+P` by hand ([details](#-passwords-filled-in-from-pass)) |
 | 👁️ | **See saved passwords** | An eye on every password field; a saved one is shown only after the password store's passphrase, checked every time |
-| 🖥️ | **Built-in terminal** | Your shell in a panel under the editor (``Ctrl+` ``), in your theme's colours and its own font, with a 🔑 button that pastes the saved sudo password ([details](#-terminal)) |
+| 🖥️ | **Built-in terminal** | Your shell in a panel under the editor (``Ctrl+` ``), **in tmux** with your own config (Settings › TMUX), in your theme's colours and its own font, with a 🔑 button that pastes the saved sudo password ([details](#-terminal)) |
 | 🗂️ | **File explorer** | AppFlowy-style sidebar that follows the open file — search, templates, trash, reveal-in-file-manager |
 | 🕸️ | **3D tag graph** | Obsidian-style graph of a folder's notes and their tags — glowing, revolving, coloured by your theme |
 | 🤖 | **Prompt Me (optional AI)** | Inline prompt bar backed by a local LLM or OpenRouter — **off by default** |
@@ -247,8 +247,8 @@ favourites or pin it to the panel — on GNOME the installer pins it to the dock
 (`TENDRIL_PIN=0` to skip). `.md` files get **Open with Tendril**.
 
 - 🧩 **Needs:** `curl`, and Docker for the usual way (Docker Desktop, OrbStack or Colima on macOS) — or nothing more with **Build on this machine**. The OS and CPU (x64 / arm64) are detected automatically.
-- 🔑 **Also installs on your machine (not in Docker), only what is missing,** for the [Remote section](#-remote-files-over-ssh):
-  `pass` + `gnupg`, a full `rsync` (3.1+), the OpenSSH client and a windowed `pinentry` (GPG's passphrase dialog).
+- 🔑 **Also installs on your machine (not in Docker), only what is missing,** for the [Remote section](#-remote-files-over-ssh) and the [terminal](#-terminal):
+  `pass` + `gnupg`, a full `rsync` (3.1+), the OpenSSH client, a windowed `pinentry` (GPG's passphrase dialog) and `tmux`.
   Linux uses your distribution's package manager (apt, dnf, pacman, zypper, apk — asks for `sudo` once);
   macOS uses Homebrew (`brew install rsync pass pinentry-mac`; `ssh` is built in) and asks you to install Homebrew first if it is missing.
   Tendril sets up its own password store the first time you save a key or password (see [Settings › SSH](#%EF%B8%8F-settings--ssh--saved-hosts)). `TENDRIL_SKIP_DEPS=1` skips this step.
@@ -268,7 +268,7 @@ favourites or pin it to the panel — on GNOME the installer pins it to the dock
   folders. `pass`, `gnupg`, `rsync`, `ssh`,
   Docker and your own notes stay.
 - 💾 **Backup:** **Settings › Backup › Export / Import**, or `tendril --export <file>` / `tendril --import <file>`.
-  A backup holds settings, SSH hosts and their port forwards, trusted hosts, imported themes and the built-in templates;
+  A backup holds settings, SSH hosts and their port forwards, trusted hosts, imported themes, the built-in templates and the tmux config;
   **not** saved keys and passwords (they stay in `pass`; add them again after importing) nor downloaded fonts. After a
   fresh install the installer offers to import the newest `~/tendril-backup-*.tendril` (or `TENDRIL_IMPORT=<file>`).
 
@@ -716,8 +716,8 @@ fine) with no binary data, up to **10 MB**. Otherwise *Cannot open file* says wh
 ## 🖥️ Terminal
 
 ``Ctrl+` `` (or the terminal button in the top bar, or **View › Toggle Terminal**) opens a
-terminal panel under the editor, running your own shell — the login shell on macOS, as
-Terminal.app does. It starts in the explorer's folder (else the open file's folder, else home).
+terminal panel under the editor, running your own shell **inside tmux**. It starts in the
+explorer's folder (else the open file's folder, else home).
 
 | | |
 |---|---|
@@ -731,6 +731,49 @@ Terminal.app does. It starts in the explorer's folder (else the open file's fold
 | ▶️ | **Run code blocks**: in a Markdown note, a fenced block labelled `bash`, `zsh`, `sh`, `py` or `python` gets **Run** (and every block gets **Copy**), in Edit, Split and Reading view. Run pastes a shell block into the terminal and runs it, or feeds a Python block to `python3` (a here-document; no temp file). A note can come from anyone, so the **first Run in each note asks once** |
 | 🔑 | **Paste sudo password**: the 🔑 button (or `Ctrl+Alt+P`, rebindable) pastes the saved sudo password — this machine's, or the server's in an SSH shell Tendril opened. sudo's own prompts are filled in by themselves ([details](#-passwords-filled-in-from-pass)) |
 | 🔁 | **↻** restarts the shell; **✕** (on the panel or the Terminal tab) closes the terminal and ends the shell; when the shell exits, `Enter` starts a new one |
+
+### 🪟 tmux
+
+The terminal always opens in **tmux** — Tendril's own tmux server (`tmux -L tendril-…`, one per
+Tendril profile), so a tmux you start yourself is never touched and `~/.tmux.conf` is not read.
+Each terminal is one tmux session: **↻** starts a fresh one, **✕** ends it, and quitting Tendril
+ends its sessions (two Tendril windows open at once each keep their own). If tmux is not installed,
+the terminal is a plain shell and says so (the installer installs tmux).
+
+**Settings › TMUX** holds the config, in an editor, starting from this default:
+
+| Keys | Does |
+|---|---|
+| `Ctrl+C` | **Prefix** (`Ctrl+C Ctrl+C` sends a real Ctrl+C to the program) |
+| Prefix `n` | New window |
+| `Shift+←` / `Shift+→` | Previous / next window |
+| `Ctrl+←` / `Ctrl+→` | Move the window left / right |
+| Prefix `v` / Prefix `h` | Split side by side / one above the other |
+| Prefix `←` `→` `↑` `↓` | Move between panes |
+| Prefix `{` / `}` | Swap panes |
+| Prefix `z` | Zoom a pane |
+| Prefix `Ctrl`+arrows | Resize a pane |
+| Prefix `,` | Rename the window (or Prefix `:` then `rename-window name`) |
+| Prefix `[` | Copy mode (vi keys): `Space` starts a selection, `Enter` copies, `Esc` clears, `q` quits, `/` `?` search, `n` `N` next / previous |
+| Prefix `]` | Paste what was copied |
+| Prefix `r` | Reload the config |
+
+Mouse mode is on (click a pane, drag a border, scroll); hold `Shift` while dragging to select
+text the usual way instead.
+
+- 💾 **Save** has tmux check the config first (on a throwaway tmux server): a mistake is reported
+  with its line and nothing is saved. A good config is saved in Tendril's data folder
+  (`tmux.conf`), used by every terminal from then on, and **loaded into open terminals at once**.
+- ↩️ **Reset to default** puts the default config back in the editor (saved with **Save**).
+  Closing Settings with unsaved changes asks first.
+- 🎨 **Theme colours:** the status bar, the current window and pane borders take the Tendril
+  theme's colours — built-in or an imported Obsidian theme — and change with the theme (also
+  live). tmux only reads `#rrggbb`, so Tendril converts each colour first (an Obsidian theme's
+  `rgb()`, and its see-through `rgba()` selection laid over the background).
+- 📋 **System clipboard:** what copy mode copies (`Enter`, or a mouse selection) also goes to the
+  system clipboard, so `Ctrl+Shift+V` and other apps can paste it.
+- Both are set *underneath* your config: anything you set in Settings › TMUX wins.
+- The config travels in **Settings › Backup** exports.
 
 ---
 
@@ -814,7 +857,7 @@ clear, other programs cannot use it, and it is gone when you disconnect.
 |---|---|
 | ssh password or key passphrase — Tendril's connections | From the host's `pass` entry |
 | `ssh` typed in the built-in terminal | From the matching saved host (or `tendril/ssh/user@host/password`) |
-| `sudo` on this machine, in the built-in terminal | From **Settings › SSH › sudo password (this machine)**, only when the prompt is sudo's own *and* the terminal's foreground process really is `sudo` |
+| `sudo` on this machine, in the built-in terminal | From **Settings › SSH › sudo password (this machine)**, only when the prompt is sudo's own *and* the foreground process of the pane showing it really is `sudo` |
 | `sudo` on a server, in a shell Tendril opened for a saved host (**Open in terminal**) | That host's **sudo password** (or its login password), with **Auto-Paste Guard** on: only on prompts carrying the session's **secret marker** (see below) |
 | Any sudo prompt, any wording | **`Ctrl+Alt+P`** (or the 🔑 button on the terminal) pastes the current saved password — the host's in its SSH shell, this machine's elsewhere — whenever *you* press it |
 | A new host's key | **Never** — its fingerprint is always shown for you to confirm |
@@ -831,11 +874,18 @@ pasted by itself.
 stops pasting it — locally and on servers — until you **change the password in Settings**, which
 re-arms it (the new one gets one try too). `Ctrl+Alt+P` always sends what is saved at that moment.
 
+**In tmux** a prompt can wait in any pane or window, not only the one in front. Tendril asks its
+tmux which pane's screen ends with the prompt and runs `sudo` (or that session's `ssh`) in the
+foreground, and types the password into **that pane** only (through a tmux buffer, never on a
+command line). `Ctrl+Alt+P` types into the pane in front.
+
 - **One wrong saved password, and it stops**: if the server (or sudo) asks again, Tendril asks
   *you* instead of filling it in again. Type it with **Save in pass** ticked, and it is saved once
   the login works.
 - Prompts go through ssh's own askpass hook, not screen text, so a server cannot fake a prompt to
   harvest a password. OS dialogs (polkit, the macOS admin prompt) are outside Tendril and stay manual.
+  Each Tendril window answers through its own private socket, so two windows open at once never
+  take each other's prompts.
 - `pass` asks for your GPG passphrase with its own dialog when the key is locked (gpg-agent caches it).
 
 ---
@@ -1023,7 +1073,8 @@ Tendril reads the Obsidian community theme catalogue and extracts a palette from
 `theme.css`. Only the CSS custom properties on `:root` / `body` / `.theme-light` /
 `.theme-dark` are used — every other rule targets Obsidian's own DOM and is discarded.
 That includes the theme's named colours and graph variables, so the
-[tag graph](#%EF%B8%8F-tag-graph) looks the way the theme draws it in Obsidian.
+[tag graph](#%EF%B8%8F-tag-graph) looks the way the theme draws it in Obsidian. The
+[terminal](#-terminal) and its [tmux](#-tmux) status bar take the theme's colours too.
 
 ---
 
@@ -1203,6 +1254,7 @@ src/
 │   ├── graph.ts       tag-graph scanner, folder marker, watcher
 │   ├── lint.ts        ESLint + Ruff (WASM) for .js / .py files
 │   ├── terminal.ts    the terminal panel's shells (node-pty)
+│   ├── tmux.ts        Tendril's own tmux server, its config and theme colours
 │   ├── ssh/           remote files: connection, askpass, private agent, pass, rsync/sftp transfers, sudo fill
 │   ├── textFile.ts    what opens: text detection and the reason a file is refused
 │   └── llm.ts         OpenAI-compatible streaming client
@@ -1216,6 +1268,7 @@ src/
 │   ├── terminal.ts    terminal panel: xterm.js view, keys, resize
 │   ├── remote.ts      explorer's Remote section; settingsSsh.ts, sshPrompt.ts, transfersPanel.ts
 │   ├── reveal.ts      👁️ eye buttons on password fields
+│   ├── settingsTmux.ts  Settings › TMUX config editor
 │   ├── tables/        model, editor, context menu, size picker
 │   ├── charts/        3D bar/pie model, SVG renderer, markdown-it plugin, chart editor
 │   ├── themes/        builtin palettes, Obsidian import, graph and terminal colours

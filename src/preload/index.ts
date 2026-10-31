@@ -190,6 +190,12 @@ const api = {
   onTermData: (cb: (id: number, data: string) => void): void => {
     ipcRenderer.on('term:data', (_e, id: number, data: string) => cb(id, data))
   },
+  /** The theme's colours for tmux's status bar and borders. */
+  tmuxColors: (colors: { bg: string; barBg: string; fg: string; muted: string; border: string; accent: string; selection: string }): void => ipcRenderer.send('tmux:colors', colors),
+  /** Settings › TMUX: the saved config, the default one, and whether tmux is installed. */
+  tmuxGetConfig: (): Promise<{ text: string; defaultText: string; installed: boolean }> => ipcRenderer.invoke('tmux:getConfig'),
+  /** Save it if tmux accepts it; resolves with tmux's complaint otherwise. */
+  tmuxSaveConfig: (text: string): Promise<string | null> => ipcRenderer.invoke('tmux:saveConfig', text),
   onTermExit: (cb: (id: number, code: number) => void): void => {
     ipcRenderer.on('term:exit', (_e, id: number, code: number) => cb(id, code))
   },

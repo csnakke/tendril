@@ -27,6 +27,29 @@ function parse(color: string): Rgb | null {
 
 const hex = ([r, g, b]: Rgb): string => '#' + [r, g, b].map((v) => Math.round(Math.min(255, Math.max(0, v))).toString(16).padStart(2, '0')).join('')
 
+let probe: CanvasRenderingContext2D | null = null
+
+/**
+ * Any CSS colour as an opaque #rrggbb, for programs that take nothing else
+ * (tmux): names and hsl() are normalised by the browser, and a see-through
+ * colour (an Obsidian theme's rgba() selection) is laid over `under`.
+ * Null when it is not a colour.
+ */
+export function solidHex(color: string, under = '#000000'): string | null {
+  probe ??= document.createElement('canvas').getContext('2d')
+  if (!probe) return null
+  probe.fillStyle = '#010203'
+  probe.fillStyle = color
+  const c = String(probe.fillStyle)
+  // An invalid colour leaves the marker in place.
+  if (c === '#010203' && color.trim().toLowerCase() !== '#010203') return null
+  const rgb = parse(c)
+  if (!rgb) return null
+  const alpha = Number(/^rgba\([^)]*,\s*([\d.]+)\s*\)$/i.exec(c)?.[1] ?? 1)
+  const base = parse(under) ?? [0, 0, 0]
+  return hex([0, 1, 2].map((i) => base[i] + (rgb[i] - base[i]) * alpha) as Rgb)
+}
+
 /** a·t + b·(1−t), on parsed colours; `a` alone when either does not parse. */
 function blend(a: string, b: string, t: number): string {
   const pa = parse(a), pb = parse(b)

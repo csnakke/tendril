@@ -27,9 +27,9 @@
 # Needs: curl, and Docker for the usual way (Docker Desktop, OrbStack, Colima, … on macOS).
 #
 # Also installs on this machine (not in Docker), when missing, what the
-# explorer's Remote section and its saved passwords use: pass and gnupg, a
-# full rsync, the OpenSSH client and a windowed pinentry (GPG's passphrase
-# dialog). Linux uses the distribution's package manager (asks for sudo once);
+# explorer's Remote section, its saved passwords and the terminal use: pass
+# and gnupg, a full rsync, the OpenSSH client, tmux (the terminal runs in it)
+# and a windowed pinentry (GPG's passphrase dialog). Linux uses the distribution's package manager (asks for sudo once);
 # macOS uses Homebrew. Tendril sets up its own password store (its own GPG key
 # and `pass init`, inside its data folder) the first time a secret is saved.
 #
@@ -70,7 +70,7 @@ Switches (set them in front of bash: … | TENDRIL_BUILD=local bash):
   TENDRIL_INSTALL_DIR  folder the app goes in (Linux ~/.local/share, macOS ~/Applications)
   TENDRIL_NODE_IMAGE   image for a Docker build (node:22-bookworm)
   TENDRIL_PIN          1 = pin to the GNOME dock, 0 = don't (1)
-  TENDRIL_SKIP_DEPS    1 = don't install pass, gnupg, rsync, ssh, pinentry
+  TENDRIL_SKIP_DEPS    1 = don't install pass, gnupg, rsync, ssh, pinentry, tmux
   TENDRIL_IMPORT       a .tendril backup to import after installing
 
 After installing: tendril, tendril <file>, tendril --export <file>, tendril --import <file>
@@ -176,7 +176,7 @@ tendril_running() {
 }
 
 # Everything of Tendril's on this machine that exists, one path per line.
-# pass, gnupg, rsync, ssh and Docker are not Tendril's and stay; so do your own
+# pass, gnupg, rsync, ssh, tmux and Docker are not Tendril's and stay; so do your own
 # notes, a templates folder you chose, and ~/.ssh.
 tendril_traces() {
   local p
@@ -301,7 +301,7 @@ $left"
 if [ "$ACTION" = uninstall ]; then
   step "Uninstalling Tendril"
   uninstall
-  printf '\n%sDone.%s Tendril and its configuration are gone. pass, gnupg, rsync and ssh are left as they were.\n' "$BOLD$GREEN" "$RESET"
+  printf '\n%sDone.%s Tendril and its configuration are gone. pass, gnupg, rsync, ssh and tmux are left as they were.\n' "$BOLD$GREEN" "$RESET"
   exit 0
 fi
 
@@ -348,7 +348,8 @@ install_deps_linux() {
   if ! have rsync || ! full_rsync rsync; then missing+=(rsync); fi
   { have ssh && have ssh-agent && have ssh-add && have sftp; } || missing+=(ssh)
   gui_pinentry >/dev/null || missing+=(pinentry)
-  [ "${#missing[@]}" -eq 0 ] && { info "pass, gnupg, rsync, ssh and pinentry are already installed."; return 0; }
+  have tmux || missing+=(tmux)
+  [ "${#missing[@]}" -eq 0 ] && { info "pass, gnupg, rsync, ssh, pinentry and tmux are already installed."; return 0; }
 
   for c in apt-get dnf pacman zypper apk; do have "$c" && { pm="$c"; break; }; done
   local kde=0
@@ -362,6 +363,7 @@ install_deps_linux() {
       dnf:gnupg) pkgs+=(gnupg2) ;;
       zypper:gnupg) pkgs+=(gpg2) ;;
       *:rsync) pkgs+=(rsync) ;;
+      *:tmux) pkgs+=(tmux) ;;
       apt-get:ssh | apk:ssh) pkgs+=(openssh-client) ;;
       dnf:ssh | zypper:ssh) pkgs+=(openssh-clients) ;;
       pacman:ssh) pkgs+=(openssh) ;;
@@ -372,7 +374,7 @@ install_deps_linux() {
     esac
   done
   if [ -z "$pm" ]; then
-    warn "Install these yourself for the Remote section and saved passwords: ${missing[*]}"
+    warn "Install these yourself for the Remote section, saved passwords and the terminal's tmux: ${missing[*]}"
     return 0
   fi
   step "Installing ${pkgs[*]} (${pm}, asks for sudo once)"
@@ -398,7 +400,8 @@ install_deps_mac() {
   full_rsync "${prefix:-/nonexistent}/bin/rsync" || pkgs+=(rsync)
   have pass || pkgs+=(pass)
   have pinentry-mac || [ -x "${prefix:-/nonexistent}/bin/pinentry-mac" ] || pkgs+=(pinentry-mac)
-  [ "${#pkgs[@]}" -eq 0 ] && { info "rsync, pass and pinentry-mac are already installed (ssh is built into macOS)."; return 0; }
+  have tmux || [ -x "${prefix:-/nonexistent}/bin/tmux" ] || pkgs+=(tmux)
+  [ "${#pkgs[@]}" -eq 0 ] && { info "rsync, pass, pinentry-mac and tmux are already installed (ssh is built into macOS)."; return 0; }
   if [ -z "$brew" ]; then
     fail "Homebrew is needed to install ${pkgs[*]} (Tendril's Remote section and saved passwords use them).
     Install Homebrew first:

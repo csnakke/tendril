@@ -1,5 +1,5 @@
 import { randomBytes, timingSafeEqual } from 'node:crypto'
-import { promises as fs } from 'node:fs'
+import { promises as fs, rmSync } from 'node:fs'
 import { createServer, type Server } from 'node:net'
 import { tmpdir, userInfo } from 'node:os'
 import { join } from 'node:path'
@@ -11,6 +11,8 @@ import { join } from 'node:path'
  * The client hands the prompt to a Unix socket here and prints the answer for
  * ssh to read. Nothing is written to disk but the scripts; the socket sits in
  * a per-user 0700 folder, and each request must carry the session's token.
+ * Socket and scripts are named after this process (askpass-<pid>…), so two
+ * Tendril windows open at once each answer their own ssh.
  */
 
 export type PromptKind = 'confirm' | 'passphrase' | 'password' | 'other'
@@ -45,6 +47,7 @@ s.on('error', () => process.exit(1))
 
 let dir: string | null = null
 let server: Server | null = null
+let files: string[] = []
 let token = ''
 let script = ''
 let handler: AskHandler = async () => null
@@ -71,14 +74,34 @@ export function classify(prompt: string): PromptKind {
   return 'other'
 }
 
+const alive = (pid: number): boolean => {
+  try {
+    process.kill(pid, 0)
+    return true
+  } catch (e) {
+    return (e as NodeJS.ErrnoException).code === 'EPERM'
+  }
+}
+
+/** What a Tendril that did not quit cleanly left behind; another running Tendril's stays. */
+async function removeStale(base: string): Promise<void> {
+  for (const name of await fs.readdir(base).catch(() => [] as string[])) {
+    const pid = /^askpass-(\d+)(?:\.sock|\.js)?$/.exec(name)?.[1]
+    if (pid && Number(pid) !== process.pid && !alive(Number(pid))) await fs.rm(join(base, name), { force: true })
+  }
+}
+
 async function start(): Promise<void> {
   if (server) return
   const base = await runtimeDir()
+  await removeStale(base)
   token = randomBytes(24).toString('hex')
-  const sock = join(base, 'askpass.sock')
+  const own = `askpass-${process.pid}`
+  const sock = join(base, `${own}.sock`)
   await fs.rm(sock, { force: true })
-  const js = join(base, 'askpass.js')
-  script = join(base, 'askpass')
+  const js = join(base, `${own}.js`)
+  script = join(base, own)
+  files = [sock, js, script]
   await fs.writeFile(js, CLIENT, { mode: 0o600 })
   await fs.writeFile(script, `#!/bin/sh\nELECTRON_RUN_AS_NODE=1 exec "$TENDRIL_ASKPASS_NODE" "${js}" "$@"\n`, { mode: 0o700 })
   server = createServer({ allowHalfOpen: true }, (conn) => {
@@ -132,7 +155,7 @@ export async function askEnv(ctx: AskContext): Promise<{ env: Record<string, str
       // Always askpass, even with a terminal (OpenSSH 8.4+); older ssh still uses it when there is no terminal.
       SSH_ASKPASS_REQUIRE: 'force',
       TENDRIL_ASKPASS_NODE: process.execPath,
-      TENDRIL_ASKPASS_SOCK: join(dir!, 'askpass.sock'),
+      TENDRIL_ASKPASS_SOCK: files[0],
       TENDRIL_ASKPASS_TOKEN: token,
       TENDRIL_ASKPASS_CTX: id
     },
@@ -140,8 +163,11 @@ export async function askEnv(ctx: AskContext): Promise<{ env: Record<string, str
   }
 }
 
+/** Tendril quits: its socket and scripts go (synchronously, before the process is gone). */
 export function stopAskpass(): void {
   server?.close()
   server = null
   contexts.clear()
+  for (const f of files) rmSync(f, { force: true })
+  files = []
 }

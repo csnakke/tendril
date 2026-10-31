@@ -39,6 +39,7 @@ function run(cmd: string, args: string[], input?: string): Promise<{ code: numbe
     child.stderr.on('data', (d: Buffer) => (stderr += d.toString('utf8')))
     child.on('error', () => resolve({ code: -1, stdout: '', stderr: `${cmd} is not installed` }))
     child.on('close', (code) => resolve({ code: code ?? -1, stdout, stderr }))
+    child.stdin.on('error', () => {})
     child.stdin.end(input ?? '')
   })
 }

@@ -2,7 +2,7 @@ import type { Terminal } from '@xterm/xterm'
 import type { FitAddon } from '@xterm/addon-fit'
 import { acceleratorFromEvent, resolveBindings } from '../shared/keybindings'
 import { currentPalette, resolvedTheme, settings, terminalFontFamily, updateSettings } from './appearance'
-import { terminalTheme } from './themes/terminal'
+import { solidHex, terminalTheme } from './themes/terminal'
 import { initTerminalTab, setTerminalTab } from './tabBar'
 import { holdSidebar } from './sidebar'
 import { alertBox, errorMessage } from './messageBox'
@@ -77,7 +77,41 @@ export function terminalMaximized(): boolean {
 // ---- Look -------------------------------------------------------------------------
 
 function applyTheme(): void {
-  if (term) term.options.theme = terminalTheme(currentPalette(), resolvedTheme())
+  if (!term) return
+  term.options.theme = terminalTheme(currentPalette(), resolvedTheme())
+  sendTmuxColors()
+}
+
+/**
+ * tmux's status bar and pane borders take the theme's colours too (main/tmux.ts).
+ * tmux reads only #rrggbb; Obsidian themes give rgb()/rgba(), so every colour
+ * goes as opaque hex, the see-through ones laid over the background.
+ */
+function sendTmuxColors(): void {
+  const p = currentPalette()
+  const bg = solidHex(p.bg) ?? '#000000'
+  const barBg = solidHex(p.barBg, bg) ?? bg
+  const solid = (c: string, under = bg): string => solidHex(c, under) ?? ''
+  window.api.tmuxColors({
+    bg, barBg,
+    fg: solid(p.fg), muted: solid(p.muted), border: solid(p.border, barBg), accent: solid(p.accent), selection: solid(p.selection)
+  })
+}
+
+/**
+ * OSC 52: a program (tmux's copy mode, mostly) puts text on the clipboard.
+ * Writing only: a request to read the clipboard ("?") is ignored.
+ */
+function osc52(data: string): boolean {
+  const b64 = data.slice(data.indexOf(';') + 1)
+  if (!b64 || b64 === '?') return true
+  try {
+    const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0))
+    void navigator.clipboard.writeText(new TextDecoder().decode(bytes)).catch(() => {})
+  } catch {
+    /* not base64: nothing to copy */
+  }
+  return true
 }
 
 async function applyFont(): Promise<void> {
@@ -233,6 +267,7 @@ async function load(): Promise<Terminal> {
   fitAddon = new FitAddon()
   t.loadAddon(fitAddon)
   t.attachCustomKeyEventHandler(appKeys)
+  t.parser.registerOscHandler(52, osc52)
   t.onData((data) => {
     if (id !== null) window.api.termWrite(id, data)
     else if (exited && data === '\r') {
@@ -242,6 +277,7 @@ async function load(): Promise<Terminal> {
   })
   t.open(bodyEl)
   term = t
+  sendTmuxColors()
   await applyFont()
   return t
 }
