@@ -5,6 +5,7 @@ import { currentPalette, resolvedTheme, settings, terminalFontFamily, updateSett
 import { terminalTheme } from './themes/terminal'
 import { initTerminalTab, setTerminalTab } from './tabBar'
 import { holdSidebar } from './sidebar'
+import { errorMessage } from './messageBox'
 
 /**
  * The terminal: one shell (see main/terminal.ts) in an xterm.js view that
@@ -137,7 +138,14 @@ splitEl.addEventListener('pointerdown', (e) => {
 async function startShell(): Promise<void> {
   if (!term) return
   exited = false
-  id = await window.api.termStart(term.cols, term.rows, cwdFor())
+  try {
+    id = await window.api.termStart(term.cols, term.rows, cwdFor())
+  } catch (err) {
+    // Say why instead of leaving an empty pane; Enter tries again (onData).
+    id = null
+    exited = true
+    term.write(`\x1b[31mCould not start the shell: ${errorMessage(err)}\x1b[0m\r\n\x1b[2mPress Enter to try again.\x1b[0m\r\n`)
+  }
 }
 
 function endShell(): void {
