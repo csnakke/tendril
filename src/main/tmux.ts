@@ -310,7 +310,7 @@ async function removeOrphans(): Promise<void> {
   const r = await tmux(['list-sessions', '-F', '#{session_name}'])
   for (const name of r.stdout.split('\n')) {
     const owner = /^t(\d+)-\d+$/.exec(name)?.[1]
-    if (owner && Number(owner) !== process.pid && !alive(Number(owner))) await tmux(['kill-session', '-t', name])
+    if (owner && Number(owner) !== process.pid && !alive(Number(owner))) await tmux(['kill-session', '-t', `=${name}`])
   }
 }
 
@@ -330,16 +330,19 @@ export async function tmuxLaunch(id: number, shell: string, cwd: string): Promis
   await readTmuxConf()
   await writeFileAtomic(baseConf(), baseText())
   mine.add(session(id))
-  return { file: bin, args: ['-L', SOCKET(), '-f', baseConf(), 'new-session', '-s', session(id), '-c', cwd] }
+  // -u: the terminal view is UTF-8, whatever the locale says (a macOS app has no LANG):
+  // without it tmux draws characters such as Kali's ㉿ as underscores.
+  return { file: bin, args: ['-u', '-L', SOCKET(), '-f', baseConf(), 'new-session', '-s', session(id), '-c', cwd] }
 }
 
+/** Its name; tmux targets use `=name`, an exact match (t1-1 must not find t1-10). */
 export const session = (id: number): string => `t${process.pid}-${id}`
 /** What the pseudo-terminal's environment needs for tmux: where `Prefix r` reloads from. */
 export const tmuxEnv = (): Record<string, string> => ({ TENDRIL_TMUX_CONF: baseConf() })
 
 export function killTmuxSession(id: number): void {
   mine.delete(session(id))
-  void tmux(['kill-session', '-t', session(id)])
+  void tmux(['kill-session', '-t', `=${session(id)}`])
 }
 
 /**
@@ -350,7 +353,7 @@ export function killTmuxSessions(): void {
   if (!binaryPath) return
   for (const name of mine) {
     try {
-      execFileSync(binaryPath, ['-L', SOCKET(), 'kill-session', '-t', name], { stdio: 'ignore', timeout: 2000 })
+      execFileSync(binaryPath, ['-L', SOCKET(), 'kill-session', '-t', `=${name}`], { stdio: 'ignore', timeout: 2000 })
     } catch {
       /* already gone */
     }
@@ -366,7 +369,7 @@ export interface Pane {
 
 /** The panes of terminal `id`'s session, and what runs in the foreground of each. */
 export async function panes(id: number): Promise<Pane[]> {
-  const r = await tmux(['list-panes', '-s', '-t', session(id), '-F', '#{pane_id} #{pane_active}#{window_active} #{pane_current_command}'])
+  const r = await tmux(['list-panes', '-s', '-t', `=${session(id)}`, '-F', '#{pane_id} #{pane_active}#{window_active} #{pane_current_command}'])
   if (r.code !== 0) return []
   return r.stdout
     .split('\n')
@@ -382,6 +385,18 @@ export async function paneLastLine(pane: string): Promise<string> {
   const r = await tmux(['capture-pane', '-p', '-J', '-t', pane])
   const lines = r.stdout.split('\n').filter((l) => l.trim())
   return lines[lines.length - 1] ?? ''
+}
+
+/**
+ * Run `argv` (no shell in between) in a new window of terminal `id`'s session,
+ * named `name`; the window closes when it exits. False if tmux would not.
+ */
+export async function openWindow(id: number, name: string, argv: string[]): Promise<boolean> {
+  // A terminal opened by the same click may not have its session yet.
+  for (let i = 0; i < 30 && (await tmux(['has-session', '-t', `=${session(id)}`])).code !== 0; i++) {
+    await new Promise((r) => setTimeout(r, 100))
+  }
+  return (await tmux(['new-window', '-t', `=${session(id)}:`, '-n', name, '--', ...argv])).code === 0
 }
 
 /** Type `text` and Enter into one pane, through a tmux buffer (never on a command line). */

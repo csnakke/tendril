@@ -776,7 +776,13 @@ text the usual way instead.
   `rgb()`, and its see-through `rgba()` selection laid over the background).
 - 📋 **System clipboard:** what copy mode copies (`Enter`, or a mouse selection) also goes to the
   system clipboard, so `Ctrl+Shift+V` and other apps can paste it.
-- Both are set *underneath* your config: anything you set in Settings › TMUX wins.
+- 🔤 **Unicode:** tmux always runs in UTF-8 mode, so prompts like Kali's `user㉿kali` show as
+  they should (not `user__kali`), even where the system gives Tendril no UTF-8 locale (an app
+  started from Finder or the Dock on macOS, whose shells also get `LANG=en_US.UTF-8`).
+  Nothing is tied to one prompt: any character the prompt prints — accents, box lines, emoji,
+  Powerline symbols — is drawn, as long as the terminal font has it (Nerd Font icons need a Nerd
+  Font, chosen in **Settings › Fonts › Terminal**). A UTF-8 locale you already have is kept.
+- The theme colours and the clipboard are set *underneath* your config: anything you set in Settings › TMUX wins.
 - The config travels in **Settings › Backup** exports.
 
 ---
@@ -792,7 +798,7 @@ like a local folder, and move files either way:
 | ⬆️ | **Upload**: drag files or folders (from the explorer or your file manager) onto a remote folder; or right-click a remote folder › Upload Files / Folders Here…; or right-click a local item › Upload to *host:folder* (the remote folder you last opened) |
 | ⬇️ | **Download**: right-click a remote file or folder › Download to *your explorer folder*, or Download to… |
 | 📊 | **Transfers** show as a chip in the status bar: progress, speed and time left per transfer, Stop and Resume |
-| 🖥️ | **Shell**: the terminal button opens `ssh` to the host in the built-in terminal, over the same connection — no second login |
+| 🖥️ | **Shell**: the terminal button opens a shell on the host in the built-in terminal, over the same connection — no second login. It gets a **tmux window of its own**, named after the host, with just the server's prompt (no ssh command printed); logging out closes it and your local shell is still in window 0 |
 | 🔀 | **Port forwards** of the host show as switches under the header: click to start or stop one |
 
 ### ⚡ Quick and reliable, at any size

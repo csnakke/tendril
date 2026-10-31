@@ -390,11 +390,11 @@ export function remoteMenuItems(localPath: string): MenuItemConstructorOptions[]
 
 // ---- IPC ------------------------------------------------------------------------------------
 
-let write: (terminal: number, data: string) => void = () => {}
+let run: (terminal: number, argv: string[], title: string) => Promise<void> = async () => {}
 
-export function registerRemote(handle: Handle, on: On, win: () => BrowserWindow | null, writeTerminal: (terminal: number, data: string) => void): void {
+export function registerRemote(handle: Handle, on: On, win: () => BrowserWindow | null, runInTerminal: (terminal: number, argv: string[], title: string) => Promise<void>): void {
   getWin = win
-  write = writeTerminal
+  run = runInTerminal
   setAskHandler(answer)
   on('ssh:promptReply', (_e, id: number, value: string | null, save: boolean) => {
     const resolve = prompts.get(id)
@@ -459,7 +459,8 @@ export function registerRemote(handle: Handle, on: On, win: () => BrowserWindow 
       pushState()
     }
   })
-  // A shell on the server, typed into the terminal `terminal`. Its sudo prompt
+  // A shell on the server, opened in the terminal `terminal` (a tmux window of
+  // its own, nothing typed or echoed). Its sudo prompt
   // carries a secret marker, so auto-paste can tell real prompts of this
   // session from any text that merely looks like one.
   handle('remote:openShell', (_e, terminal: number) => {
@@ -467,7 +468,7 @@ export function registerRemote(handle: Handle, on: On, win: () => BrowserWindow 
     const host = c.saved?.name ?? null
     const marker = host ? newMarker(host) : null
     setTerminalHost(Number(terminal), host)
-    write(Number(terminal), `\x15${c.shellCommand(marker)}\r`)
+    return run(Number(terminal), c.shellArgs(marker), c.label)
   })
   handle('remote:upload', (_e, paths: string[], dir: string) => upload(Array.isArray(paths) ? paths : [], String(dir)))
   handle('remote:download', (_e, paths: string[], localDir: string | null) => download(Array.isArray(paths) ? paths : [], typeof localDir === 'string' ? localDir : null))

@@ -2,9 +2,10 @@ import { promises as fs } from 'node:fs'
 import { homedir, userInfo } from 'node:os'
 import { spawn, type IPty } from 'node-pty'
 import { askEnv } from './ssh/askpass'
+import { shq } from './ssh/connection'
 import { SudoFill, type SudoShell } from './ssh/sudo'
 import { setTerminalHost } from './ssh/sudoState'
-import { killTmuxSession, killTmuxSessions, paneLastLine, panes, pasteIntoPane, tmuxEnv, tmuxLaunch } from './tmux'
+import { killTmuxSession, killTmuxSessions, openWindow, paneLastLine, panes, pasteIntoPane, tmuxEnv, tmuxLaunch } from './tmux'
 
 /**
  * The terminal panel's shells. Each runs in a pseudo-terminal (node-pty) owned
@@ -77,6 +78,9 @@ export async function startTerminal(
   // Set by Tendril's Linux launcher for Electron's sandbox; not the shell's business.
   delete env['CHROME_DEVEL_SANDBOX']
   Object.assign(env, { TERM: 'xterm-256color', COLORTERM: 'truecolor', TERM_PROGRAM: 'Tendril' })
+  // A macOS app gets no locale; Terminal.app gives its shells a UTF-8 one, so
+  // non-ASCII text (Kali's ㉿, accents, emoji) is read and drawn as such.
+  if (process.platform === 'darwin' && ![env['LC_ALL'], env['LC_CTYPE'], env['LANG']].some((v) => /utf-?8/i.test(v ?? ''))) env['LANG'] = 'en_US.UTF-8'
   const ask = process.platform === 'win32' ? null : await askEnv({ terminal: true }).catch(() => null)
   if (ask) Object.assign(env, ask.env)
   const id = ++seq
@@ -115,6 +119,16 @@ export async function startTerminal(
 export function pasteSudo(id: unknown): Promise<string | null> {
   const fill = fills.get(id as number)
   return fill ? fill.pasteByHand() : Promise.resolve('The terminal is not running.')
+}
+
+/**
+ * Run `argv` in terminal `id` without typing it: in tmux, a new window named
+ * `title` (closed when it exits); in a plain shell, typed after `clear`, which
+ * wipes the echoed command, and with a leading space to keep it out of history.
+ */
+export async function runInTerminal(id: number, argv: string[], title: string): Promise<void> {
+  if (tmuxed.has(id) && (await openWindow(id, title, argv))) return
+  writeTerminal(id, `\x15 clear; ${argv.map(shq).join(' ')}\r`)
 }
 
 export function writeTerminal(id: unknown, data: unknown): void {

@@ -260,9 +260,14 @@ fi
    * (SUDO_PROMPT), so Tendril can recognise its real prompts; a server that
    * forces its own prompt simply shows that instead.
    */
-  shellCommand(marker: string | null = null): string {
+  shellArgs(marker: string | null = null): string[] {
     const remote = marker ? [`exec env SUDO_PROMPT='[sudo:${marker}] password for %p: ' "$SHELL" -l`] : []
-    return ['ssh', ...this.base(), '-o', 'ControlMaster=no', ...(marker ? ['-t'] : []), this.hostname, ...remote].map(shq).join(' ')
+    return ['ssh', ...this.base(), '-o', 'ControlMaster=no', ...(marker ? ['-t'] : []), this.hostname, ...remote]
+  }
+
+  /** The same, as one line for a shell to run. */
+  shellCommand(marker: string | null = null): string {
+    return this.shellArgs(marker).map(shq).join(' ')
   }
 
   /** rsync's -e: ssh over the open connection. rsync splits this on spaces and honours quotes. */

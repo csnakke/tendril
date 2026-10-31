@@ -17,7 +17,7 @@ import { buildGraph, disableGraph, enableGraph, forgetGraph, isGraphFolder, unwa
 import { loadSession, saveSession } from './session'
 import { readTextFile } from './textFile'
 import { lint } from './lint'
-import { killAllTerminals, killTerminal, pasteSudo, resizeTerminal, startTerminal, writeTerminal } from './terminal'
+import { killAllTerminals, killTerminal, pasteSudo, resizeTerminal, runInTerminal, startTerminal, writeTerminal } from './terminal'
 import { closeRemote, registerRemote, remoteMenuItems } from './ssh/remote'
 import { exportBackup, importBackup, removeGraphMarkers } from './backup'
 import { clearOpenRouterKey, moveOpenRouterKeyToPass, saveOpenRouterKey } from './aiKey'
@@ -628,7 +628,7 @@ on('app:relaunch', () => {
 
 // ---- Remote (SSH) ------------------------------------------------------------
 
-registerRemote(handle, on, () => win, writeTerminal)
+registerRemote(handle, on, () => win, runInTerminal)
 
 // ---- Settings & fonts ------------------------------------------------------
 
