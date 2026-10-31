@@ -3,7 +3,8 @@ import { settings, updateSettings } from './appearance'
 import { renderIconSets, renderThemeGrid } from './themes/settings'
 import { alertBox, confirmBox, errorMessage } from './messageBox'
 import { renderKeybindings } from './keybindingsPage'
-import { syncSsh } from './settingsSsh'
+import { ensureStore, syncSsh } from './settingsSsh'
+import { addEye, hideSecret, hideSecrets, typedValue } from './reveal'
 
 type Target = 'uiFont' | 'editorFont' | 'terminalFont'
 const TARGETS: Target[] = ['uiFont', 'editorFont', 'terminalFont']
@@ -113,6 +114,7 @@ function syncAi(): void {
   dialog.querySelectorAll<HTMLElement>('.ai-provider').forEach((el) => (el.hidden = el.dataset.provider !== s.llmProvider))
   $('.ai-test').hidden = s.llmProvider === 'none'
   for (const [sel, key] of aiFields) $<HTMLInputElement>(sel).value = s[key]
+  hideSecret(keyInput)
   keyInput.value = ''
   keyInput.placeholder = s.openRouterKeySet ? 'A key is saved — type a new one to replace it' : 'sk-or-…'
   keyClear.hidden = !s.openRouterKeySet
@@ -125,12 +127,25 @@ for (const [sel, key] of aiFields) {
   const input = $<HTMLInputElement>(sel)
   input.addEventListener('change', () => void updateSettings({ [key]: input.value.trim() }))
 }
-keyInput.addEventListener('change', () => {
-  // An empty field means "left alone"; Remove is how a key is taken away.
-  const key = keyInput.value.trim()
-  if (key) void updateSettings({ openRouterKey: key }).then(syncAi)
+keyInput.addEventListener('change', async () => {
+  // An empty field (or the saved key shown by the eye) means "left alone"; Remove is how a key is taken away.
+  const key = typedValue(keyInput).trim()
+  if (!key || !(await ensureStore())) return
+  try {
+    await window.api.aiSaveKey(key)
+    await updateSettings({})
+    syncAi()
+  } catch (err) {
+    await alertBox('Could not save the key', errorMessage(err))
+  }
 })
-keyClear.addEventListener('click', () => void updateSettings({ openRouterKey: '' }).then(syncAi))
+keyClear.addEventListener('click', async () => {
+  await window.api.aiClearKey()
+  await updateSettings({})
+  syncAi()
+})
+// A key from an earlier version, still in the keychain, cannot be shown: it moves into pass once the store is set up.
+addEye(keyInput, () => (settings().openRouterKeyInPass ? { kind: 'openRouter' } : null))
 $('#llm-test').addEventListener('click', async () => {
   llmTestResult.textContent = 'Connecting…'
   try {
@@ -375,6 +390,8 @@ for (const target of TARGETS) {
 }
 
 $('#settings-close').addEventListener('click', () => dialog.close())
+// A shown password does not stay in the closed dialog.
+dialog.addEventListener('close', () => hideSecrets(dialog))
 
 // ---- Backup -----------------------------------------------------------------------------
 

@@ -84,6 +84,7 @@
         <section id="terminal-pane" aria-label="Terminal">
           <div class="tp-head">
             <i data-icon="terminal"></i><span class="tp-title">Terminal</span>
+            <button type="button" class="tp-sudo" data-cmd="pasteSudo" title="Paste the saved sudo password (Ctrl+Alt+P)"><i data-icon="key"></i></button>
             <button type="button" class="tp-restart" title="Restart the shell"><i data-icon="refresh-cw"></i></button>
             <button type="button" class="tp-min" title="Minimize to the status bar"><i data-icon="minus"></i></button>
             <button type="button" class="tp-max" title="Maximize to a tab"><i data-icon="square"></i></button>
@@ -335,6 +336,14 @@
                   <label>Key passphrase<input name="passphrase" type="password" placeholder="Only if the key has one" /></label>
                 </div>
                 <label class="ssh-auth-password">Password<input name="password" type="password" /></label>
+                <div class="ssh-sudo-cfg">
+                  <div class="ssh-sudo-head">sudo on this server</div>
+                  <label class="ssh-check"><input type="checkbox" name="sudoSameAsLogin" />Same as login password</label>
+                  <label class="ssh-sudo-pw">sudo password<input name="sudo" type="password" autocomplete="off" />
+                    <button type="button" data-clear-sudo class="ssh-link" hidden>Remove saved sudo password</button></label>
+                  <label class="ssh-check"><input type="checkbox" name="autoPasteGuard" />Auto-Paste Guard</label>
+                  <div class="ssh-sub">On: the sudo password is pasted by itself, but only on this server's own sudo prompts in shells Tendril opens for it (they carry a secret marker). After one wrong paste it waits until you change the password here. Off (for a server with a custom sudo prompt): nothing is pasted by itself. <kbd>Ctrl+Alt+P</kbd> always pastes it when you press it.</div>
+                </div>
               </div>
               <div class="ssh-card">
                 <div class="ssh-card-title">Port forwarding<button type="button" id="ssh-add-forward" class="ssh-ghost"><i data-icon="plus-circle"></i>Add</button></div>
@@ -398,7 +407,7 @@
             </div>
             <div class="ai-provider" data-provider="openrouter">
               <div class="setting">
-                <div class="info"><div class="name">API key</div><div class="desc">From <a href="https://openrouter.ai/keys" target="_blank">openrouter.ai/keys</a>. Stored in the app's settings file, encrypted where the OS has a keychain; it is never read back into the window.</div></div>
+                <div class="info"><div class="name">API key</div><div class="desc">From <a href="https://openrouter.ai/keys" target="_blank">openrouter.ai/keys</a>. Kept in Tendril’s password store (pass), like SSH passwords. The eye shows it after you enter the store’s passphrase.</div></div>
                 <div class="control"><input type="password" id="openrouter-key" placeholder="sk-or-…" autocomplete="off" spellcheck="false" /><button type="button" id="openrouter-key-clear" hidden>Remove</button></div>
               </div>
               <div class="setting">

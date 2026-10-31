@@ -5,7 +5,7 @@ import { currentPalette, resolvedTheme, settings, terminalFontFamily, updateSett
 import { terminalTheme } from './themes/terminal'
 import { initTerminalTab, setTerminalTab } from './tabBar'
 import { holdSidebar } from './sidebar'
-import { errorMessage } from './messageBox'
+import { alertBox, errorMessage } from './messageBox'
 
 /**
  * The terminal: one shell (see main/terminal.ts) in an xterm.js view that
@@ -197,6 +197,11 @@ function appKeys(e: KeyboardEvent): boolean {
     toggleTerminal()
     return false
   }
+  if (sameKeys(acceleratorFromEvent(e, window.api.platform), resolveBindings(settings().keybindings).pasteSudo ?? '')) {
+    e.preventDefault()
+    void pasteSudo()
+    return false
+  }
   if (!mac && e.ctrlKey && e.shiftKey && !e.altKey && (e.code === 'KeyC' || e.code === 'KeyV')) {
     e.preventDefault()
     if (e.code === 'KeyC') {
@@ -286,13 +291,30 @@ export function toggleTerminal(): void {
   else term?.focus()
 }
 
-/** Type a command into the shell (opening the terminal first), e.g. ssh to the connected host. */
-export async function runInTerminal(command: string): Promise<void> {
+/** Bring the terminal on screen with a running shell; its id, or null when it would not start. */
+export async function openTerminal(): Promise<number | null> {
   if (state === 'closed' || state === 'panel') await show('panel')
   else await show(state === 'min' ? restoreTo : 'max')
   if (id === null) await startShell()
+  return id
+}
+
+/** Type a command into the shell (opening the terminal first), e.g. a note's code block. */
+export async function runInTerminal(command: string): Promise<void> {
+  const shell = await openTerminal()
   // Ctrl+U first: whatever was half-typed on the prompt does not get prefixed.
-  if (id !== null) window.api.termWrite(id, `\x15${command}\r`)
+  if (shell !== null) window.api.termWrite(shell, `\x15${command}\r`)
+}
+
+/**
+ * Ctrl+Alt+P: paste the saved sudo password into the shell (the SSH host's,
+ * in a shell Tendril opened on it; else this machine's). Always your keypress.
+ */
+export async function pasteSudo(): Promise<void> {
+  if (id === null) return alertBox('No terminal is running', 'Open the terminal and run the command that asks for the sudo password first.')
+  const why = await window.api.termPasteSudo(id)
+  if (why) await alertBox('Nothing to paste', why)
+  term?.focus()
 }
 
 /** A document was brought to the front: a maximized terminal steps behind it. */
@@ -304,6 +326,8 @@ $('#terminal-pane .tp-min').addEventListener('click', minimize)
 maxEl.addEventListener('click', () => void show(state === 'max' ? 'panel' : 'max'))
 trayEl.addEventListener('click', () => void show(restoreTo))
 initTerminalTab({ select: () => void show('max'), close })
+
+$('#terminal-pane .tp-sudo').addEventListener('click', () => void pasteSudo())
 
 $('#terminal-pane .tp-restart').addEventListener('click', () => {
   endShell()

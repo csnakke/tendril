@@ -17,9 +17,10 @@ import { buildGraph, disableGraph, enableGraph, forgetGraph, isGraphFolder, unwa
 import { loadSession, saveSession } from './session'
 import { readTextFile } from './textFile'
 import { lint } from './lint'
-import { killAllTerminals, killTerminal, resizeTerminal, startTerminal, writeTerminal } from './terminal'
+import { killAllTerminals, killTerminal, pasteSudo, resizeTerminal, startTerminal, writeTerminal } from './terminal'
 import { closeRemote, registerRemote, remoteMenuItems } from './ssh/remote'
 import { exportBackup, importBackup, removeGraphMarkers } from './backup'
+import { clearOpenRouterKey, moveOpenRouterKeyToPass, saveOpenRouterKey } from './aiKey'
 import type { LintKind } from '../shared/lint'
 
 type Command = string
@@ -138,6 +139,7 @@ function menuTemplate(keys: Record<string, string>): MenuItemConstructorOptions[
         { label: 'Toggle Sidebar', accelerator: acc('toggleSidebar'), click: () => send('toggleSidebar') },
         { label: 'Toggle Graph Pane', accelerator: acc('toggleGraphPane'), click: () => send('toggleGraphPane') },
         { label: 'Toggle Terminal', accelerator: acc('toggleTerminal'), click: () => send('toggleTerminal') },
+        { label: 'Paste sudo Password in the Terminal', accelerator: acc('pasteSudo'), click: () => send('pasteSudo') },
         { label: 'Wrap Text', accelerator: acc('toggleWrap'), click: () => send('toggleWrap') },
         { type: 'separator' },
         { label: 'Next Tab', accelerator: acc('nextTab'), click: () => send('nextTab') },
@@ -594,6 +596,7 @@ handle('term:start', (e, cols: number, rows: number, cwd: string | null) =>
 on('term:write', (_e, id: number, data: string) => writeTerminal(id, data))
 on('term:resize', (_e, id: number, cols: number, rows: number) => resizeTerminal(id, cols, rows))
 on('term:kill', (_e, id: number) => killTerminal(id))
+handle('term:pasteSudo', (_e, id: number) => pasteSudo(id))
 
 // ---- Backup ------------------------------------------------------------------
 
@@ -618,18 +621,31 @@ on('app:relaunch', () => {
 
 // ---- Remote (SSH) ------------------------------------------------------------
 
-registerRemote(handle, on, () => win)
+registerRemote(handle, on, () => win, writeTerminal)
 
 // ---- Settings & fonts ------------------------------------------------------
 
 handle('settings:get', async () => redact(await loadSettings()))
-handle('settings:set', async (_e, patch: Partial<Settings>) => {
+handle('settings:set', async (_e, raw: Partial<Settings>) => {
+  // The OpenRouter key is written only through ai:saveKey (into pass).
+  const patch = { ...raw }
+  delete patch.openRouterKey
+  delete patch.openRouterKeyInPass
   const next = await saveSettings(patch)
   if ('keybindings' in patch) {
     keybindings = next.keybindings
     buildMenu()
   }
   return redact(next)
+})
+
+handle('ai:saveKey', async (_e, key: string) => {
+  await saveOpenRouterKey(key)
+  return redact(await loadSettings())
+})
+handle('ai:clearKey', async () => {
+  await clearOpenRouterKey()
+  return redact(await loadSettings())
 })
 
 handle('fonts:list', () => listNerdFonts())
@@ -799,6 +815,7 @@ app.whenReady().then(async () => {
   keybindings = (await loadSettings()).keybindings
   buildMenu()
   createWindow()
+  void moveOpenRouterKeyToPass().catch(() => {})
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
   })

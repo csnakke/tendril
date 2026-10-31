@@ -26,7 +26,7 @@ import { linkPaste } from './linkPaste'
 import { openPromptBar, promptStream, stopPrompt } from './promptBar'
 import { IMAGE_FILE, dirOf, isMarkdownFile } from './paths'
 import { initGraphPane, toggleGraphPane } from './graph/pane'
-import { documentShown, initTerminal, terminalMaximized, toggleTerminal } from './terminal'
+import { documentShown, initTerminal, pasteSudo, terminalMaximized, toggleTerminal } from './terminal'
 // The explorer's Remote section (SSH), ssh's password dialog and the transfers chip wire themselves up.
 import './remote'
 import './sshPrompt'
@@ -648,6 +648,7 @@ const commands: Record<Command, () => void | Promise<void>> = {
   toggleSidebar: () => toggleSidebar(),
   toggleGraphPane: () => toggleGraphPane(),
   toggleTerminal: () => toggleTerminal(),
+  pasteSudo: () => pasteSudo(),
   newFromTemplate: () => newFromTemplate(currentRoot()),
   insertImage: () => {
     if (shownMode() === 'reading') setMode('split')

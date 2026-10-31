@@ -40,7 +40,7 @@ const knownHostsFile = (): string => join(userData(), 'ssh', 'known_hosts')
 const themesDir = (): string => join(userData(), 'themes')
 
 /** Settings that belong to this machine or are secret: not carried over. */
-const LOCAL_ONLY: (keyof Settings)[] = ['openRouterKey', 'sidebarRoot', 'graphFolders', 'sudoSaved']
+const LOCAL_ONLY: (keyof Settings)[] = ['openRouterKey', 'openRouterKeyInPass', 'sidebarRoot', 'graphFolders', 'sudoSaved']
 
 async function readDir(dir: string, match: RegExp): Promise<FileItem[]> {
   try {
@@ -56,7 +56,7 @@ export async function exportBackup(file: string): Promise<string> {
   const settings: Partial<Settings> = { ...s }
   for (const k of LOCAL_ONLY) delete settings[k]
   // Hosts travel without their secrets: those are in `pass`, not in the backup.
-  settings.sshHosts = s.sshHosts.map((h) => ({ ...h, hasKey: false, hasPassword: false, hasPassphrase: false }))
+  settings.sshHosts = s.sshHosts.map((h) => ({ ...h, hasKey: false, hasPassword: false, hasPassphrase: false, hasSudo: false }))
   const backup: Backup = {
     format: FORMAT,
     version: VERSION,
@@ -96,7 +96,7 @@ export async function importBackup(file: string): Promise<string> {
     if (Array.isArray(want) ? Array.isArray(v) : want === null || v === null || typeof v === typeof want) (incoming as Record<string, unknown>)[k] = v
   }
   // Keys and passwords are not in backups; a host that had them has to be given them again.
-  if (Array.isArray(incoming.sshHosts)) incoming.sshHosts = incoming.sshHosts.map((h) => ({ ...h, hasKey: false, hasPassword: false, hasPassphrase: false }))
+  if (Array.isArray(incoming.sshHosts)) incoming.sshHosts = incoming.sshHosts.map((h) => ({ ...h, hasKey: false, hasPassword: false, hasPassphrase: false, hasSudo: false }))
   await saveSettings(incoming)
 
   // Trusted hosts: added to what this machine already trusts.

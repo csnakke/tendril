@@ -100,7 +100,9 @@ Tendril is a deliberate merge of the features people actually use in each tool:
 | ✏️ | **Multiple cursors** | Sublime-style: `Ctrl+D`, column carets, split selection into lines |
 | 🐍 | **Code & text files** | `.py` and `.js` files highlighted and linted (Ruff, ESLint) with one-click fixes; `.txt`, `.env` and other text files open as plain text ([details](#-code--text-files)) |
 | 🌐 | **Remote files over SSH** | A Remote section in the explorer: browse a server, drag to upload, right-click to download — resumable rsync transfers of any size, port forwarding, keys and passwords kept in `pass` ([details](#-remote-files-over-ssh)) |
-| 🖥️ | **Built-in terminal** | Your shell in a panel under the editor (``Ctrl+` ``), in your theme's colours and its own font ([details](#-terminal)) |
+| 🔑 | **sudo auto-paste** | Saved sudo passwords filled in safely — locally and on servers (secret-marker prompts, one try then stop), `Ctrl+Alt+P` by hand ([details](#-passwords-filled-in-from-pass)) |
+| 👁️ | **See saved passwords** | An eye on every password field; a saved one is shown only after the password store's passphrase, checked every time |
+| 🖥️ | **Built-in terminal** | Your shell in a panel under the editor (``Ctrl+` ``), in your theme's colours and its own font, with a 🔑 button that pastes the saved sudo password ([details](#-terminal)) |
 | 🗂️ | **File explorer** | AppFlowy-style sidebar that follows the open file — search, templates, trash, reveal-in-file-manager |
 | 🕸️ | **3D tag graph** | Obsidian-style graph of a folder's notes and their tags — glowing, revolving, coloured by your theme |
 | 🤖 | **Prompt Me (optional AI)** | Inline prompt bar backed by a local LLM or OpenRouter — **off by default** |
@@ -408,6 +410,7 @@ the new keys, `↺` restores the default. On macOS read `Ctrl` as `⌘`.
 | Toggle sidebar | `Ctrl+B` |
 | Toggle graph pane | `Ctrl+Shift+G` |
 | Terminal: open / focus, or minimize from inside it | ``Ctrl+` `` |
+| Paste the saved sudo password into the terminal | `Ctrl+Alt+P` |
 | Wrap text in Edit / Split view | `Alt+Z` |
 | Next / previous tab | `Ctrl+Tab` / `Ctrl+Shift+Tab` |
 
@@ -726,6 +729,7 @@ Terminal.app does. It starts in the explorer's folder (else the open file's fold
 | ➖ | **Minimize** (**–**, or ``Ctrl+` `` from inside it) sends it to a **Terminal** chip in the status bar — the shell keeps running. Click the chip to bring it back exactly as it was: the panel at its last height, or maximized |
 | ⬜ | **Maximize** (**□**) turns it into a **Terminal** tab next to your documents, filling the window with the file explorer hidden — a full-screen terminal. The sidebar toggle still shows the explorer while maximized, without changing your saved choice. Click a document tab to go back to editing (the explorer returns as it was), the Terminal tab to come back; **□** again restores the panel |
 | ▶️ | **Run code blocks**: in a Markdown note, a fenced block labelled `bash`, `zsh`, `sh`, `py` or `python` gets **Run** (and every block gets **Copy**), in Edit, Split and Reading view. Run pastes a shell block into the terminal and runs it, or feeds a Python block to `python3` (a here-document; no temp file). A note can come from anyone, so the **first Run in each note asks once** |
+| 🔑 | **Paste sudo password**: the 🔑 button (or `Ctrl+Alt+P`, rebindable) pastes the saved sudo password — this machine's, or the server's in an SSH shell Tendril opened. sudo's own prompts are filled in by themselves ([details](#-passwords-filled-in-from-pass)) |
 | 🔁 | **↻** restarts the shell; **✕** (on the panel or the Terminal tab) closes the terminal and ends the shell; when the shell exits, `Enter` starts a new one |
 
 ---
@@ -769,12 +773,26 @@ highlighted.
 | Hostname, User, Port | Where to connect (port 22 by default) |
 | Private key | Paste it, or **Browse…** to a key file (e.g. an AWS `.pem`) |
 | Key passphrase, Password | Optional |
+| sudo password | Optional: the server's sudo password, or tick **Same as login password** |
+| 👁️ Eye button | On every password field: shows what you typed, or — when the field is empty and a password is saved — fetches the saved one from `pass` after you enter the store's passphrase |
+| Auto-Paste Guard | On (default): sudo's own prompts on that server are answered by themselves, in shells Tendril opens for it. Off: only `Ctrl+Alt+P` pastes — for a server with a custom sudo prompt |
 | Port forwarding | **Local** (a port here → host:port seen from the server), **Remote** (a server port → host:port seen from here), **Dynamic** (a SOCKS proxy on a port here); each listens on this machine only unless **LAN** is ticked, and **On** starts it with the connection |
 
-**Add host** saves the host. Its **key, password and passphrase go straight into Tendril's own
-[`pass`](https://www.passwordstore.org) store** — `tendril/ssh/<name>/key`, `…/password`,
-`…/passphrase` — encrypted; Tendril's settings only record that they exist.
+**Add host** saves the host. Its **key, password, passphrase and sudo password go straight into
+Tendril's own [`pass`](https://www.passwordstore.org) store** — `tendril/ssh/<name>/key`,
+`…/password`, `…/passphrase`, `…/sudo` — encrypted; Tendril's settings only record that they exist.
+This machine's sudo password is `tendril/sudo/<user>@<machine>` and the OpenRouter key
+`tendril/ai/openrouter`.
 **Test connection** tries it.
+
+**Seeing a saved password.** Click the 👁️ eye on an empty password field (host password, key
+passphrase, sudo password, this machine's sudo password, the OpenRouter key) and enter the
+passphrase of Tendril's password store. Tendril makes gpg-agent forget its remembered passphrase
+first, then decrypts with the one you typed, so **a wrong passphrase never shows anything**, even
+within the hour gpg-agent would otherwise remember it. Three wrong tries lock it for 30 seconds.
+The password is hidden and cleared again when you click the eye, go back to the host list or close
+Settings, and saving without changing it keeps the stored one as it is. With text you have just
+typed, the eye only shows that, without asking.
 
 **Tendril's password store** lives in its data folder — `~/.config/Tendril/pass/` with its own GPG
 keyring in `~/.config/Tendril/gnupg/` (`~/Library/Application Support/Tendril/…` on macOS) — so your
@@ -796,8 +814,22 @@ clear, other programs cannot use it, and it is gone when you disconnect.
 |---|---|
 | ssh password or key passphrase — Tendril's connections | From the host's `pass` entry |
 | `ssh` typed in the built-in terminal | From the matching saved host (or `tendril/ssh/user@host/password`) |
-| `sudo` in the built-in terminal | From **Settings › SSH › sudo password**, only when the prompt is sudo's own *and* the terminal's foreground process really is `sudo` |
+| `sudo` on this machine, in the built-in terminal | From **Settings › SSH › sudo password (this machine)**, only when the prompt is sudo's own *and* the terminal's foreground process really is `sudo` |
+| `sudo` on a server, in a shell Tendril opened for a saved host (**Open in terminal**) | That host's **sudo password** (or its login password), with **Auto-Paste Guard** on: only on prompts carrying the session's **secret marker** (see below) |
+| Any sudo prompt, any wording | **`Ctrl+Alt+P`** (or the 🔑 button on the terminal) pastes the current saved password — the host's in its SSH shell, this machine's elsewhere — whenever *you* press it |
 | A new host's key | **Never** — its fingerprint is always shown for you to confirm |
+
+**sudo on a server, safely.** When Tendril opens a shell on a saved host it sets that session's
+sudo prompt to include a random marker (`SUDO_PROMPT`). Only a prompt with that marker is answered,
+so text that merely looks like a sudo prompt (a file you `cat`, program output) and any server you
+`ssh` to from there never get the password. A server that forces its own prompt
+(`passprompt_override`, PAM/2FA prompts) never shows the marker: untick **Auto-Paste Guard** for it
+and use `Ctrl+Alt+P`. `ssh` typed by hand in the terminal gets no marker, so nothing there is
+pasted by itself.
+
+**A wrong saved sudo password** is pasted once: when sudo answers *Sorry, try again*, that terminal
+stops pasting it — locally and on servers — until you **change the password in Settings**, which
+re-arms it (the new one gets one try too). `Ctrl+Alt+P` always sends what is saved at that moment.
 
 - **One wrong saved password, and it stops**: if the server (or sudo) asks again, Tendril asks
   *you* instead of filling it in again. Type it with **Save in pass** ticked, and it is saved once
@@ -918,9 +950,11 @@ sequenceDiagram
   - ☁️ **OpenRouter** — API key and model id, when the material is not sensitive and you want
     a bigger model
 - ✅ **Test** checks the connection *and* that the model exists.
-- 🔐 **Off by default.** The OpenRouter key is stored in the app's `settings.json`, encrypted
-  with the OS keychain where one is available, used only from the main process, and **never
-  read back into the window** — Settings shows that a key is saved and offers **Remove**.
+- 🔐 **Off by default.** The OpenRouter key is kept in **Tendril's password store** (`pass`,
+  `tendril/ai/openrouter`, the same one as SSH passwords — saving it sets the store up if needed),
+  used only from the main process, and shown in Settings only through the 👁️ eye, after the
+  store's passphrase. A key saved by an earlier version (in `settings.json`, keychain-encrypted)
+  moves into `pass` by itself once the store exists.
 
 ---
 
@@ -1083,7 +1117,7 @@ flowchart TB
     subgraph M ["⚙️ Main process — Node"]
         direction LR
         M1["📁 Files<br/>atomic writes"]
-        M2["⚙️ Settings<br/>keychain-encrypted key"]
+        M2["⚙️ Settings<br/>+ pass store"]
         M3["🗂️ Explorer<br/>+ watcher"]
         M4["🅰️ Fonts · 🌈 Themes"]
         M5["🧠 LLM client"]
@@ -1133,13 +1167,13 @@ assumption:
 | 🏖️ | The **renderer keeps the OS sandbox**; `contextIsolation` on, `nodeIntegration` off |
 | 🚪 | **Every IPC channel verifies** the call comes from the app's own frame |
 | 🖼️ | **`asset://` serves image files from the folders in play** — where notes have been opened or saved, what you picked in a dialog, your own files — not the whole disk |
-| 🔐 | The **OpenRouter key never enters the renderer**; it is encrypted at rest with the OS keychain |
+| 🔐 | **Saved secrets** (SSH passwords, sudo passwords, the OpenRouter key) are **encrypted in Tendril's own `pass` store** and reach the window only through the 👁️ eye, after the store's passphrase — checked for real, not answered from gpg-agent's cache |
 | 📦 | The **font unpacker writes each `.ttf`/`.otf` as `dir/<basename>`** and skips symlink entries, so an archive entry cannot name a path |
 | 🚫 | Debug hooks that run code in the page are **refused in packaged builds** |
 | 📈 | **Charts are SVG built from escaped text and colours checked against `#rrggbb`** — nothing in a chart block can add markup or attributes — and they still pass through the sanitizer |
 | 🎨 | A note's own `<style>` block is kept — CSS runs nothing — and imported themes are stripped to colour variables |
 | 🧹 | **Linters run in the main process, in-process** — ESLint compiles its rule schemas with `new Function`, which the window's CSP refuses, so they stay out of the window; nothing is spawned and the editor only ever sends the text it shows |
-| 🔑 | **SSH secrets live in `pass` and the main process only**: the window sends a key or password once, to be saved, and never receives one back; keys reach ssh through a private agent, never a file; ssh runs without a shell (no command injection), and remote paths go to the server as data (`sh -s` on stdin, rsync `--protect-args`) |
+| 🔑 | **SSH secrets live in `pass` and the main process only**: the window sends a key or password to be saved, and receives one back only for the 👁️ eye, after the store's passphrase (the key itself never); keys reach ssh through a private agent, never a file; ssh runs without a shell (no command injection), and remote paths go to the server as data (`sh -s` on stdin, rsync `--protect-args`) |
 | 🖥️ | The **terminal runs only your own login shell**, spawned by the main process when you open the panel; the window can send it keystrokes and a size, nothing else, and every shell ends with the window |
 | 🕸️ | The **graph scans only folders you marked** yourself from the explorer's menu — the window has no channel to mark one — never follows symlinks, and caps file size and count |
 
@@ -1164,7 +1198,8 @@ src/
 ├── main/          ⚙️  Electron main — files, settings, explorer, fonts, themes, LLM, PDF
 │   ├── index.ts       window, menu, IPC, asset:// scheme
 │   ├── fsx.ts         atomic writes
-│   ├── settings.ts    settings.json + keychain-encrypted key
+│   ├── settings.ts    settings.json
+│   ├── aiKey.ts       the OpenRouter key in pass
 │   ├── graph.ts       tag-graph scanner, folder marker, watcher
 │   ├── lint.ts        ESLint + Ruff (WASM) for .js / .py files
 │   ├── terminal.ts    the terminal panel's shells (node-pty)
@@ -1180,6 +1215,7 @@ src/
 │   ├── codeLint.ts    lint results → editor diagnostics and Fix actions
 │   ├── terminal.ts    terminal panel: xterm.js view, keys, resize
 │   ├── remote.ts      explorer's Remote section; settingsSsh.ts, sshPrompt.ts, transfersPanel.ts
+│   ├── reveal.ts      👁️ eye buttons on password fields
 │   ├── tables/        model, editor, context menu, size picker
 │   ├── charts/        3D bar/pie model, SVG renderer, markdown-it plugin, chart editor
 │   ├── themes/        builtin palettes, Obsidian import, graph and terminal colours

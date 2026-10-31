@@ -10,8 +10,8 @@ import type { Session } from '../main/session'
 import type { GraphData } from '../shared/graph'
 import type { Template } from '../main/templates'
 import type { LintKind, LintMessage } from '../shared/lint'
-import type { RemoteEntry, RemoteState, SshHost, SshHostInput, SshPrompt, SshSecrets, Transfer } from '../shared/ssh'
-export type { RemoteEntry, RemoteState, SshForward, SshHost, SshHostInput, SshPrompt, SshSecrets, Transfer } from '../shared/ssh'
+import type { RemoteEntry, RemoteState, RevealTarget, SshHost, SshHostInput, SshPrompt, SshSecrets, Transfer } from '../shared/ssh'
+export type { RemoteEntry, RemoteState, RevealTarget, SshForward, SshHost, SshHostInput, SshPrompt, SshSecrets, Transfer } from '../shared/ssh'
 
 export type Command =
   | 'new'
@@ -29,6 +29,7 @@ export type Command =
   | 'toggleSidebar'
   | 'toggleGraphPane'
   | 'toggleTerminal'
+  | 'pasteSudo'
   | 'toggleWrap'
   | 'newFromTemplate'
   | 'hotExit'
@@ -99,6 +100,8 @@ export interface Settings {
   openRouterKey: string
   /** Whether a key is stored, so the dialog can say so without holding it. */
   openRouterKeySet: boolean
+  /** The key is in Tendril's password store (an older one may still wait in the keychain). */
+  openRouterKeyInPass: boolean
   openRouterModel: string
 }
 export type LlmProvider = 'none' | 'local' | 'openrouter'
@@ -182,13 +185,15 @@ const api = {
   termWrite: (id: number, data: string): void => ipcRenderer.send('term:write', id, data),
   termResize: (id: number, cols: number, rows: number): void => ipcRenderer.send('term:resize', id, cols, rows),
   termKill: (id: number): void => ipcRenderer.send('term:kill', id),
+  /** Ctrl+Alt+P: paste the saved sudo password into the shell; resolves with why not, or null. */
+  termPasteSudo: (id: number): Promise<string | null> => ipcRenderer.invoke('term:pasteSudo', id),
   onTermData: (cb: (id: number, data: string) => void): void => {
     ipcRenderer.on('term:data', (_e, id: number, data: string) => cb(id, data))
   },
   onTermExit: (cb: (id: number, code: number) => void): void => {
     ipcRenderer.on('term:exit', (_e, id: number, code: number) => cb(id, code))
   },
-  // ---- SSH: saved hosts, the remote explorer, transfers (secrets go to main and `pass`, never back) ----
+  // ---- SSH: saved hosts, the remote explorer, transfers (secrets go to main and `pass`; back only through secretReveal) ----
   sshPassStatus: (): Promise<{ installed: boolean; ready: boolean; broken: boolean }> => ipcRenderer.invoke('ssh:passStatus'),
   /** Set up Tendril's own password store (once): a GPG key protected by `passphrase`, then `pass init`. */
   sshSetupStore: (passphrase: string): Promise<void> => ipcRenderer.invoke('ssh:setupStore', passphrase),
@@ -199,6 +204,8 @@ const api = {
   sshTest: (id: string): Promise<string> => ipcRenderer.invoke('ssh:test', id),
   sshSaveSudo: (password: string): Promise<void> => ipcRenderer.invoke('ssh:saveSudo', password),
   sshClearSudo: (): Promise<void> => ipcRenderer.invoke('ssh:clearSudo'),
+  /** A saved secret, for Settings' eye button: only with the store's master passphrase. */
+  secretReveal: (target: RevealTarget, passphrase: string): Promise<string> => ipcRenderer.invoke('secret:reveal', target, passphrase),
   onSshPrompt: (cb: (p: SshPrompt) => void): void => {
     ipcRenderer.on('ssh:prompt', (_e, p: SshPrompt) => cb(p))
   },
@@ -213,7 +220,8 @@ const api = {
   /** The remote folder "Upload to remote" (local explorer menu) sends to. */
   remoteSelect: (dir: string): void => ipcRenderer.send('remote:select', dir),
   remoteForward: (id: string, on: boolean): Promise<void> => ipcRenderer.invoke('remote:forward', id, on),
-  remoteShellCommand: (): Promise<string> => ipcRenderer.invoke('remote:shellCommand'),
+  /** Open a shell on the connected host in terminal `terminal` (its sudo prompt carries Tendril's marker). */
+  remoteOpenShell: (terminal: number): Promise<void> => ipcRenderer.invoke('remote:openShell', terminal),
   remoteUpload: (paths: string[], dir: string): Promise<void> => ipcRenderer.invoke('remote:upload', paths, dir),
   remoteDownload: (paths: string[], localDir: string | null): Promise<void> => ipcRenderer.invoke('remote:download', paths, localDir),
   remoteContextMenu: (path: string, isDir: boolean, localRoot: string | null): void => ipcRenderer.send('remote:contextMenu', path, isDir, localRoot),
@@ -235,6 +243,9 @@ const api = {
   lint: (kind: LintKind, text: string): Promise<LintMessage[]> => ipcRenderer.invoke('lint:run', kind, text),
   /** Reach the active provider and check the model; resolves with a short status line. */
   llmTest: (): Promise<string> => ipcRenderer.invoke('llm:test'),
+  /** The OpenRouter key goes into pass; the settings come back (without it). */
+  aiSaveKey: (key: string): Promise<Settings> => ipcRenderer.invoke('ai:saveKey', key),
+  aiClearKey: (): Promise<Settings> => ipcRenderer.invoke('ai:clearKey'),
   showInFolder: (path: string): Promise<void> => ipcRenderer.invoke('shell:showInFolder', path),
   explorerContextMenu: (path: string, isDir: boolean, folder: string, isRoot: boolean): void =>
     ipcRenderer.send('explorer:contextMenu', path, isDir, folder, isRoot),

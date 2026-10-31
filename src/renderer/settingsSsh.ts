@@ -4,6 +4,7 @@ import { icon } from './icons/index'
 import { alertBox, confirmBox, errorMessage } from './messageBox'
 import { forwardLabel, hostProblems } from '../shared/ssh'
 import { promptSecret } from './sshPrompt'
+import { addEye, hideSecrets, typedValue } from './reveal'
 
 /**
  * Settings › SSH: the hosts the explorer's Remote section connects to.
@@ -21,6 +22,7 @@ const $ = <T extends HTMLElement>(sel: string): T => page.querySelector(sel) as 
 const form = $<HTMLFormElement>('#ssh-form')
 const listView = $('#ssh-list-view')
 const field = (name: string): HTMLInputElement => form.elements.namedItem(name) as HTMLInputElement
+const check = (name: string): HTMLInputElement => form.elements.namedItem(name) as HTMLInputElement
 const listEl = $<HTMLUListElement>('#ssh-hosts')
 const statusEl = $('#ssh-pass-status')
 const errorsEl = $('#ssh-errors')
@@ -38,7 +40,7 @@ let auth: Auth = 'key'
 /** A key picked or dropped (read by the main process on save), or pasted text. */
 let keyPath: string | null = null
 let keyText: string | null = null
-const clear = new Set<'key' | 'password' | 'passphrase'>()
+const clear = new Set<'key' | 'password' | 'passphrase' | 'sudo'>()
 let forwards: SshForward[] = []
 /** The forward in the inline editor: its index, or -1 for a new one. */
 let fwdEditing = -1
@@ -66,7 +68,7 @@ async function syncStatus(): Promise<void> {
  * passphrase (typed twice) protects the key Tendril makes for it. False when
  * it is not available (not installed, cancelled, or the setup failed).
  */
-async function ensureStore(): Promise<boolean> {
+export async function ensureStore(): Promise<boolean> {
   const st = await window.api.sshPassStatus()
   if (st.ready) return true
   if (!st.installed) {
@@ -102,6 +104,7 @@ async function ensureStore(): Promise<boolean> {
 // ---- Host list ------------------------------------------------------------------------
 
 function showList(): void {
+  hideSecrets(page)
   form.hidden = true
   listView.hidden = false
   $('#ssh-add').hidden = false
@@ -129,7 +132,7 @@ function renderHosts(): void {
       li.innerHTML = `<span class="sh-icon">${icon('server')}</span>
         <span class="sh-main"><span class="sh-name"></span><span class="sh-addr"></span></span>
         ${fresh ? `<span class="ssh-saved">${justSaved!.added ? 'Added' : 'Saved'}</span>` : ''}
-        <span class="sh-badges">${h.hasKey ? badge('key') : ''}${h.hasPassword ? badge('password') : ''}${h.forwards.length ? badge(`${h.forwards.length} forward${h.forwards.length > 1 ? 's' : ''}`) : ''}</span>
+        <span class="sh-badges">${h.hasKey ? badge('key') : ''}${h.hasPassword ? badge('password') : ''}${h.hasSudo || (h.sudoSameAsLogin && h.hasPassword) ? badge(h.autoPasteGuard === false ? 'sudo' : 'sudo auto') : ''}${h.forwards.length ? badge(`${h.forwards.length} forward${h.forwards.length > 1 ? 's' : ''}`) : ''}</span>
         <button type="button" class="ssh-ghost" data-act="connect">Connect</button>
         <button type="button" class="ssh-btn" data-act="edit">Edit</button>`
       li.querySelector('.sh-name')!.textContent = h.name
@@ -167,12 +170,16 @@ function openEditor(host: SshHost | null): void {
   keyPath = null
   keyText = null
   clear.clear()
+  hideSecrets(form)
   form.reset()
   field('name').value = host?.name ?? ''
   field('hostname').value = host?.hostname ?? ''
   field('user').value = host?.user ?? ''
   field('port').value = String(host?.port ?? 22)
   forwards = (host?.forwards ?? []).map((f) => ({ ...f }))
+  check('sudoSameAsLogin').checked = !!host?.sudoSameAsLogin
+  check('autoPasteGuard').checked = host?.autoPasteGuard !== false
+  syncSudo()
   setAuth(host ? (host.hasKey && host.hasPassword ? 'both' : host.hasPassword && !host.hasKey ? 'password' : 'key') : 'key')
   $('#ssh-form-title').textContent = host ? host.name : 'New host'
   submitEl.textContent = host ? 'Save' : 'Add host'
@@ -221,6 +228,21 @@ function syncKey(): void {
     field(what).placeholder = has && !clear.has(what) ? 'Saved in pass. Leave empty to keep it.' : what === 'passphrase' ? 'Only if the key has one' : ''
   }
 }
+
+/** sudo: its own password, or the login one ("Same as login password"). */
+function syncSudo(): void {
+  const same = check('sudoSameAsLogin').checked
+  page.querySelector<HTMLElement>('.ssh-sudo-pw')!.hidden = same
+  const has = !!editing?.hasSudo && !clear.has('sudo')
+  field('sudo').placeholder = has ? 'Saved in pass. Leave empty to keep it.' : 'Often the same as the login password'
+  page.querySelector<HTMLButtonElement>('button[data-clear-sudo]')!.hidden = !has
+}
+check('sudoSameAsLogin').addEventListener('change', syncSudo)
+page.querySelector<HTMLButtonElement>('button[data-clear-sudo]')!.addEventListener('click', () => {
+  clear.add('sudo')
+  hideSecrets(page.querySelector('.ssh-sudo-pw')!)
+  syncSudo()
+})
 
 page.querySelector<HTMLButtonElement>('button[data-clear="key"]')!.addEventListener('click', () => {
   keyPath = null
@@ -355,7 +377,7 @@ $('#ssh-fwd-done').addEventListener('click', () => {
     lan: fq<HTMLInputElement>('lan').checked,
     enabled: forwards[fwdEditing]?.enabled ?? true
   }
-  const problems = hostProblems({ id: '', name: 'x', hostname: 'x', user: 'x', port: 22, forwards: [f] })
+  const problems = hostProblems({ id: '', name: 'x', hostname: 'x', user: 'x', port: 22, sudoSameAsLogin: false, autoPasteGuard: true, forwards: [f] })
   if (problems.length) {
     errorsEl.textContent = problems.join('\n')
     return
@@ -376,6 +398,8 @@ function readForm(): SshHostInput {
     hostname: field('hostname').value.trim(),
     user: field('user').value.trim(),
     port: Number(field('port').value || 22),
+    sudoSameAsLogin: check('sudoSameAsLogin').checked,
+    autoPasteGuard: check('autoPasteGuard').checked,
     forwards
   }
 }
@@ -394,19 +418,25 @@ async function submit(stay = false): Promise<SshHost | null> {
   if (useKey) {
     if (keyPath) secrets.keyPath = keyPath
     else if (keyText) secrets.key = keyText
-    if (field('passphrase').value) secrets.passphrase = field('passphrase').value
+    if (typedValue(field('passphrase'))) secrets.passphrase = typedValue(field('passphrase'))
   } else {
     // Password only: a key saved before goes.
     if (editing?.hasKey) secrets.clear!.push('key')
     if (editing?.hasPassphrase) secrets.clear!.push('passphrase')
   }
   if (usePassword) {
-    if (field('password').value) secrets.password = field('password').value
+    if (typedValue(field('password'))) secrets.password = typedValue(field('password'))
   } else if (editing?.hasPassword) {
     secrets.clear!.push('password')
   }
+  if (check('sudoSameAsLogin').checked) {
+    // Its own sudo password is no longer used.
+    if (editing?.hasSudo) secrets.clear!.push('sudo')
+  } else if (typedValue(field('sudo'))) {
+    secrets.sudo = typedValue(field('sudo'))
+  }
   // The first secret ever saved sets the store up.
-  if ((secrets.key || secrets.keyPath || secrets.password || secrets.passphrase) && !(await ensureStore())) return null
+  if ((secrets.key || secrets.keyPath || secrets.password || secrets.passphrase || secrets.sudo) && !(await ensureStore())) return null
   submitEl.disabled = true
   try {
     const list = await window.api.sshSaveHost(host, secrets)
@@ -472,10 +502,11 @@ $('#ssh-delete').addEventListener('click', async () => {
 
 $('#sudo-save').addEventListener('click', async () => {
   const input = $<HTMLInputElement>('#sudo-password')
-  if (!input.value) return
+  if (!typedValue(input)) return
   if (!(await ensureStore())) return
   try {
-    await window.api.sshSaveSudo(input.value)
+    await window.api.sshSaveSudo(typedValue(input))
+    hideSecrets(page)
     input.value = ''
     await updateSettings({})
     $('#sudo-state').textContent = 'Saved in pass'
@@ -484,7 +515,18 @@ $('#sudo-save').addEventListener('click', async () => {
   }
 })
 $('#sudo-clear').addEventListener('click', async () => {
+  hideSecrets(page)
   await window.api.sshClearSudo()
   await updateSettings({})
   $('#sudo-state').textContent = ''
 })
+
+// ---- Eye buttons ----------------------------------------------------------------------
+
+/** A saved host secret to show: only while it is saved and not marked for removal. */
+const savedField = (what: 'password' | 'passphrase' | 'sudo') => () => {
+  const has = what === 'password' ? editing?.hasPassword : what === 'passphrase' ? editing?.hasPassphrase : editing?.hasSudo
+  return editing && has && !clear.has(what) ? { kind: 'host' as const, id: editing.id, field: what } : null
+}
+for (const what of ['password', 'passphrase', 'sudo'] as const) addEye(field(what), savedField(what))
+addEye($<HTMLInputElement>('#sudo-password'), () => (settings().sudoSaved ? { kind: 'localSudo' } : null))

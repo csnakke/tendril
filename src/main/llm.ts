@@ -1,3 +1,4 @@
+import { openRouterKey } from './aiKey'
 import type { Settings } from './settings'
 
 /**
@@ -19,13 +20,14 @@ interface Endpoint {
   headers: Record<string, string>
 }
 
-function endpoint(s: Settings): Endpoint {
+async function endpoint(s: Settings): Promise<Endpoint> {
   if (s.llmProvider === 'openrouter') {
-    if (!s.openRouterKey.trim()) throw new Error('No OpenRouter API key. Add one in Settings › AI.')
+    const key = await openRouterKey(s)
+    if (!key) throw new Error('No OpenRouter API key. Add one in Settings › AI.')
     return {
       base: OPENROUTER_URL,
       model: s.openRouterModel.trim(),
-      headers: { Authorization: `Bearer ${s.openRouterKey.trim()}`, 'HTTP-Referer': 'https://github.com/csnakke/tendril', 'X-Title': 'Tendril' }
+      headers: { Authorization: `Bearer ${key}`, 'HTTP-Referer': 'https://github.com/csnakke/tendril', 'X-Title': 'Tendril' }
     }
   }
   if (s.llmProvider === 'local') {
@@ -88,7 +90,7 @@ const contentText = (c: Content): string => (typeof c === 'string' ? c : Array.i
  * A server that answers with plain JSON instead of an event stream still works.
  */
 export async function complete(s: Settings, prompt: string, selection: string, onDelta: (text: string) => void, signal?: AbortSignal): Promise<string> {
-  const ep = endpoint(s)
+  const ep = await endpoint(s)
   if (!ep.model) throw new Error('No model set. Enter one in Settings › AI.')
   const user = selection ? `${prompt}\n\nSelected text:\n"""\n${selection}\n"""` : prompt
   const res = await request(
@@ -139,7 +141,7 @@ export async function complete(s: Settings, prompt: string, selection: string, o
 
 /** Settings › AI "Test": can the endpoint be reached, and does it know the model? */
 export async function test(s: Settings): Promise<string> {
-  const ep = endpoint(s)
+  const ep = await endpoint(s)
   const list = (await json(await request(ep, '/models'), ep.base)) as { data?: { id?: string }[] }
   const ids = (list.data ?? []).map((m) => m.id ?? '')
   if (ep.model && ids.length && !ids.includes(ep.model)) return `Connected (${ids.length} models), but "${ep.model}" is not among them.`

@@ -6,7 +6,7 @@ import { openSettings } from './settingsDialog'
 import { currentRoot } from './sidebar'
 import { promptText } from './sshPrompt'
 import { showMenu } from './tables/menu'
-import { runInTerminal } from './terminal'
+import { openTerminal } from './terminal'
 import { activeTransfers } from './transfersPanel'
 
 /**
@@ -282,7 +282,8 @@ $('#remote-disconnect').addEventListener('click', () => void disconnect())
 $('#remote-refresh').addEventListener('click', () => void refresh())
 $('#remote-terminal').addEventListener('click', async () => {
   try {
-    await runInTerminal(await window.api.remoteShellCommand())
+    const terminal = await openTerminal()
+    if (terminal !== null) await window.api.remoteOpenShell(terminal)
   } catch (err) {
     await alertBox('Could not open a shell', errorMessage(err))
   }

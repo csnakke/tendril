@@ -65,8 +65,13 @@ export interface Settings {
   /** Local server base URL (Ollama, LM Studio, llama.cpp, …) and model. */
   llmLocalUrl: string
   llmLocalModel: string
-  /** OpenRouter key (encrypted with the OS keychain in settings.json where available) and model id. */
+  /**
+   * OpenRouter key: kept in pass (openRouterKeyInPass, see aiKey.ts). Only a
+   * key from an earlier version, waiting for the store to be set up, is held
+   * here (encrypted with the OS keychain in settings.json where available).
+   */
   openRouterKey: string
+  openRouterKeyInPass: boolean
   openRouterModel: string
 }
 
@@ -83,7 +88,7 @@ export type SafeSettings = Omit<Settings, 'openRouterKey'> & { openRouterKey: ''
  */
 export function redact(s: Settings): SafeSettings {
   const { openRouterKey, ...rest } = s
-  return { ...rest, openRouterKey: '', openRouterKeySet: !!openRouterKey.trim() }
+  return { ...rest, openRouterKey: '', openRouterKeySet: s.openRouterKeyInPass || !!openRouterKey.trim() }
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -123,6 +128,7 @@ export const DEFAULT_SETTINGS: Settings = {
   llmLocalUrl: 'http://localhost:11434/v1',
   llmLocalModel: '',
   openRouterKey: '',
+  openRouterKeyInPass: false,
   openRouterModel: 'openai/gpt-4o-mini'
 }
 

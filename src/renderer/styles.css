@@ -1745,3 +1745,28 @@ html[data-graph-pane="closed"] :is(#graph-pane, #graph-split) { display: none; }
 }
 #settings .ssh-hosts li.just-saved { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 15%, transparent); }
 #settings .ssh-saved { padding: 1px 8px; border-radius: 9px; background: var(--accent); color: var(--bg); font-size: calc(var(--ui-size) - 2.5px); font-weight: 600; }
+#settings .ssh-sudo-cfg { display: flex; flex-direction: column; gap: 8px; padding-top: 12px; border-top: 1px solid color-mix(in srgb, var(--border) 60%, transparent); }
+#settings .ssh-sudo-cfg[hidden], #settings .ssh-sudo-pw[hidden] { display: none; }
+#settings .ssh-sudo-head { font-weight: 600; color: var(--fg); }
+#settings .ssh-sudo-cfg .ssh-check { margin: 0; font-size: var(--ui-size); color: var(--fg); flex-direction: row; }
+#settings .ssh-sudo-cfg .ssh-sub kbd { font-size: 10.5px; }
+
+/* Eye buttons on password fields (reveal.ts). */
+.pw-wrap { position: relative; display: inline-flex; align-items: center; min-width: 0; }
+.pw-wrap:has(> input[hidden]) { display: none; }
+#settings .ssh-form .pw-wrap, #ssh-prompt .pw-wrap { display: flex; }
+#settings .ssh-form .pw-wrap:has(> input[hidden]) { display: none; }
+.pw-wrap > input { flex: 1; padding-right: 34px !important; }
+.pw-wrap > input[type="text"] { font-family: var(--editor-font); }
+.pw-eye { position: absolute; right: 4px; width: 26px; height: 26px; display: grid; place-items: center; padding: 0; border: none; border-radius: 6px; background: none; color: var(--muted); cursor: pointer; }
+.pw-eye[hidden] { display: none; }
+.pw-eye:hover { color: var(--fg); background: var(--inset); }
+.pw-eye:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.pw-eye .icon { width: 16px; height: 16px; }
+/* Inside Settings' controls the eye keeps its own look, not the bordered button one. */
+#settings .pw-wrap > .pw-eye { padding: 0; border: none; background: none; color: var(--muted); }
+#settings .pw-wrap > .pw-eye:hover { color: var(--fg); background: var(--inset); }
+#settings .pw-wrap > .pw-eye[hidden] { display: none; }
+#settings .ssh-link { align-self: flex-start; padding: 0; border: none; background: none; color: #e5534b; font: inherit; font-size: calc(var(--ui-size) - 1.5px); cursor: pointer; }
+#settings .ssh-link:hover { text-decoration: underline; }
+#settings .ssh-link[hidden] { display: none; }

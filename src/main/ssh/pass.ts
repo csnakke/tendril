@@ -192,3 +192,26 @@ export async function passMove(from: string, to: string): Promise<void> {
   // Nothing saved under the old name yet is fine; anything else is not.
   if (r.code !== 0 && !/is not in the password store/.test(r.stderr)) throw new Error(r.stderr.trim() || 'pass could not rename the entry')
 }
+
+/**
+ * An entry's first line, decrypted with `passphrase` (the store's master
+ * passphrase) for showing it in Settings. gpg-agent's remembered passphrase
+ * is forgotten first, so a wrong one really fails instead of the cache
+ * answering; a right one is remembered again, as any other read would.
+ */
+export async function passReveal(name: string, passphrase: string): Promise<string> {
+  check(name)
+  const ids = (await fs.readFile(join(storeDir(), '.gpg-id'), 'utf8').catch(() => '')).split('\n').map((l) => l.trim()).filter(Boolean)
+  const grips: string[] = []
+  for (const id of ids) {
+    const r = await run('gpg', ['--batch', '--with-colons', '--with-keygrip', '--list-secret-keys', id])
+    for (const l of r.stdout.split('\n')) if (l.startsWith('grp:')) grips.push(l.split(':')[9])
+  }
+  for (const g of grips) if (/^[0-9A-F]{40}$/.test(g)) await run('gpg-connect-agent', [`CLEAR_PASSPHRASE --mode=normal ${g}`, '/bye'])
+  const r = await run('gpg', ['--batch', '--quiet', '--pinentry-mode', 'loopback', '--passphrase-fd', '0', '--decrypt', join(storeDir(), `${name}.gpg`)], passphrase + '\n')
+  if (r.code !== 0) {
+    if (/No such file|can't open/i.test(r.stderr)) throw new Error('Nothing is saved there.')
+    throw new Error('Wrong passphrase.')
+  }
+  return r.stdout.split('\n')[0]
+}

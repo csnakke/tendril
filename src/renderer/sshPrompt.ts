@@ -1,4 +1,5 @@
 import type { SshPrompt } from '../preload/index'
+import { addEye, hideSecret } from './reveal'
 
 /**
  * The dialog ssh's prompts appear in (askpass, answered in main/ssh/remote.ts):
@@ -16,6 +17,8 @@ const saveEl = $('.sp-save')
 const saveBox = $<HTMLInputElement>('.sp-save input')
 const okEl = $<HTMLButtonElement>('.sp-ok')
 const cancelEl = $<HTMLButtonElement>('.sp-cancel')
+/** Shows what is typed (passwords and passphrases only). */
+const eyeEl = addEye(inputEl)
 
 interface Request {
   title: string
@@ -37,7 +40,9 @@ function show(): void {
   detailEl.textContent = current.detail
   detailEl.hidden = !current.detail
   inputEl.hidden = current.kind === 'confirm'
+  hideSecret(inputEl)
   inputEl.type = current.kind === 'secret' ? 'password' : 'text'
+  eyeEl.hidden = current.kind !== 'secret'
   inputEl.value = ''
   inputEl.placeholder = current.placeholder ?? ''
   saveEl.hidden = !current.canSave

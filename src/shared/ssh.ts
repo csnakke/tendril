@@ -31,6 +31,15 @@ export interface SshHost {
   hasKey: boolean
   hasPassword: boolean
   hasPassphrase: boolean
+  /** A sudo password is saved (tendril/ssh/<name>/sudo). */
+  hasSudo: boolean
+  /** sudo on this server takes the login password: no separate sudo password. */
+  sudoSameAsLogin: boolean
+  /**
+   * Auto-Paste Guard: paste the sudo password by itself, only on prompts that
+   * carry the session's secret marker (generic prompts). Off: only Ctrl+Alt+P pastes.
+   */
+  autoPasteGuard: boolean
   forwards: SshForward[]
 }
 
@@ -41,10 +50,17 @@ export interface SshSecrets {
   keyPath?: string
   password?: string
   passphrase?: string
-  clear?: ('key' | 'password' | 'passphrase')[]
+  sudo?: string
+  clear?: ('key' | 'password' | 'passphrase' | 'sudo')[]
 }
 
-export type SshHostInput = Omit<SshHost, 'hasKey' | 'hasPassword' | 'hasPassphrase'>
+/** A saved secret Settings may show (eye button), after the store's master passphrase. */
+export type RevealTarget =
+  | { kind: 'host'; id: string; field: 'password' | 'passphrase' | 'sudo' }
+  | { kind: 'localSudo' }
+  | { kind: 'openRouter' }
+
+export type SshHostInput = Omit<SshHost, 'hasKey' | 'hasPassword' | 'hasPassphrase' | 'hasSudo'>
 
 export const HOST_NAME = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/
 /** A hostname or address ssh will not read as an option. */

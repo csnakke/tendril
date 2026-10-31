@@ -66,6 +66,7 @@ export function openAppMenu(x: number, y: number, run: (cmd: Command) => void): 
           cmd('Toggle Sidebar', 'toggleSidebar'),
           cmd('Toggle Graph Pane', 'toggleGraphPane'),
           cmd('Toggle Terminal', 'toggleTerminal'),
+          cmd('Paste sudo Password in the Terminal', 'pasteSudo'),
           cmd('Wrap Text', 'toggleWrap'),
           sep,
           cmd('Next Tab', 'nextTab'),

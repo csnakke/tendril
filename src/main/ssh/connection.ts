@@ -253,9 +253,15 @@ fi
     this.forwards.set(f.id, { on })
   }
 
-  /** The `ssh` command line that opens a shell on this connection (for the built-in terminal). */
-  shellCommand(): string {
-    return ['ssh', ...this.base(), '-o', 'ControlMaster=no', this.hostname].map(shq).join(' ')
+  /**
+   * The `ssh` command line that opens a shell on this connection (for the
+   * built-in terminal). With a marker, sudo there prompts with it
+   * (SUDO_PROMPT), so Tendril can recognise its real prompts; a server that
+   * forces its own prompt simply shows that instead.
+   */
+  shellCommand(marker: string | null = null): string {
+    const remote = marker ? [`exec env SUDO_PROMPT='[sudo:${marker}] password for %p: ' "$SHELL" -l`] : []
+    return ['ssh', ...this.base(), '-o', 'ControlMaster=no', ...(marker ? ['-t'] : []), this.hostname, ...remote].map(shq).join(' ')
   }
 
   /** rsync's -e: ssh over the open connection. rsync splits this on spaces and honours quotes. */

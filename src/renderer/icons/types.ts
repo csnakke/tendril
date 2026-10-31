@@ -4,7 +4,7 @@ export type IconName =
   | 'list' | 'list-ordered' | 'eraser' | 'code' | 'printer' | 'settings'
   | 'pencil' | 'columns' | 'book-open' | 'minus' | 'square' | 'x'
   | 'table' | 'image' | 'chevron-right' | 'chevrons-left' | 'chevrons-right' | 'arrow-up' | 'home' | 'refresh-cw' | 'eye'
-  | 'search' | 'plus-circle' | 'trash' | 'chevron-down' | 'sparkles' | 'send' | 'graph' | 'chart' | 'terminal' | 'arrow-down' | 'server' | 'file-plus' | 'folder-plus' | 'play' | 'copy'
+  | 'search' | 'plus-circle' | 'trash' | 'chevron-down' | 'sparkles' | 'send' | 'graph' | 'chart' | 'terminal' | 'arrow-down' | 'server' | 'file-plus' | 'folder-plus' | 'play' | 'copy' | 'key' | 'eye-off'
 
 export interface IconSet {
   /** Attributes for the <svg> wrapper: viewBox plus fill/stroke conventions of the set. */

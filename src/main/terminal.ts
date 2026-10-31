@@ -3,6 +3,7 @@ import { homedir, userInfo } from 'node:os'
 import { spawn, type IPty } from 'node-pty'
 import { askEnv } from './ssh/askpass'
 import { SudoFill } from './ssh/sudo'
+import { setTerminalHost } from './ssh/sudoState'
 
 /**
  * The terminal panel's shells. Each runs in a pseudo-terminal (node-pty) owned
@@ -14,6 +15,7 @@ import { SudoFill } from './ssh/sudo'
  */
 
 const terms = new Map<number, IPty>()
+const fills = new Map<number, SudoFill>()
 let seq = 0
 
 /** The user's login shell, the way the platform's own terminal starts it. */
@@ -74,17 +76,26 @@ export async function startTerminal(
   const pty = spawn(file, args, { name: 'xterm-256color', cols: dims(cols, 80), rows: dims(rows, 24), cwd: await startDir(cwd), env })
   const id = ++seq
   terms.set(id, pty)
-  const sudo = new SudoFill(pty)
+  const sudo = new SudoFill(pty, id)
+  fills.set(id, sudo)
   pty.onData((data) => {
     onData(id, data)
     sudo.feed(data)
   })
   pty.onExit(({ exitCode }) => {
     terms.delete(id)
+    fills.delete(id)
+    setTerminalHost(id, null)
     ask?.release()
     onExit(id, exitCode)
   })
   return id
+}
+
+/** Ctrl+Alt+P: paste the saved sudo password; resolves with why not, when there is none. */
+export function pasteSudo(id: unknown): Promise<string | null> {
+  const fill = fills.get(id as number)
+  return fill ? fill.pasteByHand() : Promise.resolve('The terminal is not running.')
 }
 
 export function writeTerminal(id: unknown, data: unknown): void {
