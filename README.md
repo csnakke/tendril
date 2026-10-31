@@ -204,9 +204,9 @@ answer scope allows. 🔒 See [Prompt Me](#-prompt-me--optional-ai).
 curl -fsSL https://raw.githubusercontent.com/csnakke/tendril/main/install.sh | bash
 ```
 
-No binaries are downloaded and nothing is installed on your system except the app itself.
-The script ([`install.sh`](install.sh)) builds Tendril from source **inside a throwaway Docker
-container**, hands you the result, and cleans up after itself:
+No prebuilt binaries: the script ([`install.sh`](install.sh)) builds Tendril from source, hands
+you the app, and cleans up after itself. **With Docker** (the usual way) the build runs in a
+throwaway container:
 
 ```mermaid
 flowchart LR
@@ -216,6 +216,22 @@ flowchart LR
     D --> E["🧹 Remove container<br/>+ image"]
     style C fill:#2f81f7,stroke:#1f6feb,color:#fff
 ```
+
+**Without Docker** — not installed, or installed but not running — it asks:
+
+```
+Docker is not installed. How do you want to build Tendril?
+  1) Install Docker first   (stops here; run this command again afterwards)
+  2) Build on this machine   (temporary Node.js and build tools, removed afterwards)
+```
+
+- **1** shows how to get (or start) Docker for your system and stops; run the same command again afterwards.
+- **2** builds right here: the **official Node.js 22** build (checksum-verified against nodejs.org), the
+  source, `node_modules` and every cache (npm, node-gyp, Electron) go into **one scratch folder that is
+  deleted at the end**, also when the build fails. On Linux the terminal's native module needs a C++
+  compiler, `make` and `python3`; if they are missing they are installed with your package manager, and at
+  the end you are **offered to remove exactly the ones it added** (never ones you already had).
+- No terminal to ask in (scripts, CI): `TENDRIL_BUILD=local` or `TENDRIL_BUILD=docker`.
 
 | | Result | Start it |
 |---|---|---|
@@ -228,15 +244,14 @@ XFCE, Cinnamon, MATE, …) picks up. Right-click **Tendril** in the menu to add 
 favourites or pin it to the panel — on GNOME the installer pins it to the dock for you
 (`TENDRIL_PIN=0` to skip). `.md` files get **Open with Tendril**.
 
-- 🧩 **Needs:** Docker (Docker Desktop, OrbStack or Colima on macOS). The OS and CPU (x64 / arm64) are detected automatically.
+- 🧩 **Needs:** `curl`, and Docker for the usual way (Docker Desktop, OrbStack or Colima on macOS) — or nothing more with **Build on this machine**. The OS and CPU (x64 / arm64) are detected automatically.
 - 🔑 **Also installs on your machine (not in Docker), only what is missing,** for the [Remote section](#-remote-files-over-ssh):
   `pass` + `gnupg`, a full `rsync` (3.1+), the OpenSSH client and a windowed `pinentry` (GPG's passphrase dialog).
   Linux uses your distribution's package manager (apt, dnf, pacman, zypper, apk — asks for `sudo` once);
   macOS uses Homebrew (`brew install rsync pass pinentry-mac`; `ssh` is built in) and asks you to install Homebrew first if it is missing.
   Tendril sets up its own password store the first time you save a key or password (see [Settings › SSH](#%EF%B8%8F-settings--ssh--saved-hosts)). `TENDRIL_SKIP_DEPS=1` skips this step.
 - 🧹 The Node image is removed afterwards — unless it was already on your machine, then it is left alone.
-- ⚙️ **Options:** `TENDRIL_INSTALL_DIR` (folder the app goes in), `TENDRIL_REF` (branch or tag), `TENDRIL_REPO` (git URL, or a local folder to build your working copy), `TENDRIL_NODE_IMAGE`, `TENDRIL_PIN` — e.g.
-  `curl -fsSL …/install.sh | TENDRIL_REF=v0.2.0 bash`
+- ⚙️ **Options:** every command and switch is listed in [Commands and switches](#%EF%B8%8F-commands-and-switches) below.
 - 🛡️ **Sandbox (Linux):** Electron sandboxes the window with user namespaces. Where the system
   blocks them (Ubuntu 24.04+, hardened kernels, some RHEL setups) the installer asks for `sudo`
   **once** to install Electron's setuid sandbox helper as `/usr/local/lib/tendril/chrome-sandbox`.
@@ -254,6 +269,78 @@ favourites or pin it to the panel — on GNOME the installer pins it to the dock
   A backup holds settings, SSH hosts and their port forwards, trusted hosts, imported themes and the built-in templates;
   **not** saved keys and passwords (they stay in `pass`; add them again after importing) nor downloaded fonts. After a
   fresh install the installer offers to import the newest `~/tendril-backup-*.tendril` (or `TENDRIL_IMPORT=<file>`).
+
+### ⚙️ Commands and switches
+
+**Commands** (copy as they are):
+
+```bash
+# Install, or update to the latest main (asks Docker or local when Docker isn't running)
+curl -fsSL https://raw.githubusercontent.com/csnakke/tendril/main/install.sh | bash
+```
+
+```bash
+# Build on this machine without Docker, without asking
+curl -fsSL https://raw.githubusercontent.com/csnakke/tendril/main/install.sh | TENDRIL_BUILD=local bash
+```
+
+```bash
+# Always build in Docker (stops with instructions if Docker isn't available)
+curl -fsSL https://raw.githubusercontent.com/csnakke/tendril/main/install.sh | TENDRIL_BUILD=docker bash
+```
+
+```bash
+# Install a specific branch or tag
+curl -fsSL https://raw.githubusercontent.com/csnakke/tendril/main/install.sh | TENDRIL_REF=v0.2.0 bash
+```
+
+```bash
+# Fresh install that restores a backup
+curl -fsSL https://raw.githubusercontent.com/csnakke/tendril/main/install.sh | TENDRIL_IMPORT=~/tendril-backup-2026-10-30.tendril bash
+```
+
+```bash
+# Uninstall (offers an export first, then removes every trace of Tendril)
+curl -fsSL https://raw.githubusercontent.com/csnakke/tendril/main/install.sh | bash -s -- --uninstall
+```
+
+```bash
+# Show the installer's help (commands and switches)
+curl -fsSL https://raw.githubusercontent.com/csnakke/tendril/main/install.sh | bash -s -- --help
+```
+
+```bash
+# Build your own working copy (from inside a clone of this repository)
+TENDRIL_REPO="$PWD" bash install.sh
+```
+
+**Switches** — set them in front of `bash`, several at once if you like
+(`… | TENDRIL_BUILD=local TENDRIL_PIN=0 bash`):
+
+| Switch | Values (default) | What it does |
+|---|---|---|
+| `TENDRIL_BUILD` | `docker` / `local` (ask when Docker isn't running) | How to build: in a throwaway Docker container, or on this machine with temporary Node.js and build tools |
+| `TENDRIL_REF` | branch or tag (`main`) | Which version to build |
+| `TENDRIL_REPO` | git URL or local folder (`https://github.com/csnakke/tendril.git`) | Where the source comes from; a local folder is built as it is on disk, uncommitted changes included |
+| `TENDRIL_INSTALL_DIR` | folder (`~/.local/share` on Linux, `~/Applications` on macOS) | Where the app goes |
+| `TENDRIL_NODE_IMAGE` | Docker image (`node:22-bookworm`) | The image a Docker build uses |
+| `TENDRIL_PIN` | `1` / `0` (`1`) | Pin Tendril to the GNOME dock (Linux) |
+| `TENDRIL_SKIP_DEPS` | `1` (off) | Don't install `pass`, `gnupg`, `rsync`, `ssh` and `pinentry` on this machine |
+| `TENDRIL_IMPORT` | path to a `.tendril` backup (none) | Import it after installing |
+
+| Argument | What it does |
+|---|---|
+| `--uninstall` | Offers an export, lists everything it will remove, asks, then removes it (`bash -s -- --uninstall`) |
+| `--help` | Prints the commands and switches (`bash -s -- --help`) |
+
+**Tendril's own command line** (after installing):
+
+| Command | What it does |
+|---|---|
+| `tendril` | Start Tendril |
+| `tendril <file>` | Open a file in Tendril |
+| `tendril --export <file>` | Write a backup of the configuration (no window opens) |
+| `tendril --import <file>` | Restore a backup (no window opens) |
 
 ### 🔨 Build from source
 
@@ -289,6 +376,7 @@ npm install && npm run compile && npm run build:linux    # For x86_64 bit Linux
 | Electron aborts with a **SUID sandbox** error on Linux | Dev-machine `chrome-sandbox` permissions | `npx electron --no-sandbox .`, or `sudo chown root:root node_modules/electron/dist/chrome-sandbox && sudo chmod 4755 …` |
 | A notification says Tendril is running **without its sandbox** | The system blocks user namespaces and the sandbox helper is missing (no `sudo` during install) | Run the installer again and enter your password when asked |
 | Tendril is not in the app menu right after installing | The desktop has not rescanned yet | Log out and back in (or restart the panel) |
+| 🍎 The terminal pane stays empty on macOS (builds before this fix) | node-pty's `spawn-helper` was packed without its executable bit, so no shell could start | Reinstall with the same curl command: the build now makes it executable (and the installer checks it). If a shell ever fails to start, the pane now says why; `Enter` retries |
 
 ---
 
@@ -391,7 +479,7 @@ flowchart TD
 
 ## 📊 Tables, the Word way
 
-If you know Word's table tools, you already know these. **Table** in the toolbar (or
+If you know Word's table tools, you already know these. **Table** in the editor's tool strip (or
 `Ctrl+Alt+T`, or right-click) opens **Word's size grid** — hover to pick columns × rows, or
 type the numbers. Right-click *inside* a table for the full menu:
 
@@ -432,7 +520,7 @@ appear as empty ones. ✅
 
 ## 📈 3D charts
 
-**Chart** in the toolbar (`Ctrl+Alt+G`, or right-click → *Insert Chart…*) opens the chart
+**Chart** in the editor's tool strip (`Ctrl+Alt+G`, or right-click → *Insert Chart…*) opens the chart
 editor: a **3D Bar / 3D Pie** switch, a data grid on the left, and the chart exactly as it
 will print on the right, redrawn as you type. **Double-click a chart in the preview** (or
 right-click inside its block → *Edit Chart…*, or press `Ctrl+Alt+G` with the cursor in it)
@@ -529,7 +617,7 @@ the source. 🔁
 
 ## 🖼️ Images
 
-**Image** in the toolbar (`Ctrl+Alt+I`, or right-click → *Insert Picture…*) opens a drop zone
+**Image** in the editor's tool strip (`Ctrl+Alt+I`, or right-click → *Insert Picture…*) opens a drop zone
 with a Browse button. You can also **drag an image straight into the editor** or **paste one
 from the clipboard**. 📥
 
@@ -558,15 +646,16 @@ The sidebar (`Ctrl+B`) is an AppFlowy-style file tree:
 - 🧭 **Follows the editor** — open a file (from the tree, *Open…*, the command line or the
   graph), save it somewhere new, or create one from a template, and the tree switches to
   that file's folder with the file highlighted. An untitled note leaves the tree where it is.
-- 🔍 **Search box** filters the tree by file name
-- 📝 **New note** creates a note from a template, then asks where to save it (starting in the current folder)
-- 📌 The **folder name heads the tree** — click to fold; its `⌄` menu goes to the parent, Home,
-  any folder, or refreshes
+- 🔍 **Search notes** in the top bar filters the tree by file name
+- 📌 The **folder name heads the tree** — click to fold. Beside it: 🔍 search, 📝 **new note**
+  (from a template, in the current folder), 📁 **new folder** and ↻ refresh; its `⌄` menu goes to
+  the parent, Home, any folder, reveals it in the file manager, opens the system **Trash**, or
+  hides the sidebar
 - 🎯 Open files show the theme's highlight
 - 🖱️ **Right-click** a file or folder for *Reveal in File Manager* and *Move to Trash*; a
   folder also offers *Enable Graph Here* / *Disable Graph* ([Tag graph](#%EF%B8%8F-tag-graph))
-- 🕸️ **Graph folders** are marked with a coloured bar, tint and graph icon in the theme's colour
-- 🗑️ The **Trash** button at the bottom opens the system trash
+- 🕸️ **Graph folders** carry a small graph badge after their name
+- 🌐 Below the tree, the **Remote** section browses a server over SSH ([details](#-remote-files-over-ssh))
 
 > ⚠️ *Move to Trash* uses the real OS trash and the tree lists dotfiles too — mind the
 > `.git` folder when you are browsing a repository.
@@ -587,8 +676,8 @@ rendered or rewritten as Markdown.
 | 📄 `.txt`, `.html`, `.env`, `Makefile`, `.log`, … | Plain text — `# a comment` is not a heading |
 
 In anything that isn't a Markdown note the editor stays in **Edit view**, and the Markdown
-tools — TOC, Table, Image, Chart and Export, in the toolbar, menus, shortcuts and
-right-click menu — are greyed out; dropping or pasting an image is ignored. Saving never
+tools — TOC, Table, Image, Chart and Export — leave the tool strip and are greyed out in the
+menus, shortcuts and right-click menu; dropping or pasting an image is ignored. Saving never
 touches a non-Markdown file's text.
 
 ### 🧹 Linting
@@ -623,7 +712,7 @@ fine) with no binary data, up to **10 MB**. Otherwise *Cannot open file* says wh
 
 ## 🖥️ Terminal
 
-``Ctrl+` `` (or the terminal button in the toolbar, or **View › Toggle Terminal**) opens a
+``Ctrl+` `` (or the terminal button in the top bar, or **View › Toggle Terminal**) opens a
 terminal panel under the editor, running your own shell — the login shell on macOS, as
 Terminal.app does. It starts in the explorer's folder (else the open file's folder, else home).
 
@@ -636,6 +725,7 @@ Terminal.app does. It starts in the explorer's folder (else the open file's fold
 | 📏 | **Resizable**: drag the line above it; the height is remembered |
 | ➖ | **Minimize** (**–**, or ``Ctrl+` `` from inside it) sends it to a **Terminal** chip in the status bar — the shell keeps running. Click the chip to bring it back exactly as it was: the panel at its last height, or maximized |
 | ⬜ | **Maximize** (**□**) turns it into a **Terminal** tab next to your documents, filling the window with the file explorer hidden — a full-screen terminal. The sidebar toggle still shows the explorer while maximized, without changing your saved choice. Click a document tab to go back to editing (the explorer returns as it was), the Terminal tab to come back; **□** again restores the panel |
+| ▶️ | **Run code blocks**: in a Markdown note, a fenced block labelled `bash`, `zsh`, `sh`, `py` or `python` gets **Run** (and every block gets **Copy**), in Edit, Split and Reading view. Run pastes a shell block into the terminal and runs it, or feeds a Python block to `python3` (a here-document; no temp file). A note can come from anyone, so the **first Run in each note asks once** |
 | 🔁 | **↻** restarts the shell; **✕** (on the panel or the Terminal tab) closes the terminal and ends the shell; when the shell exits, `Enter` starts a new one |
 
 ---
@@ -666,7 +756,12 @@ like a local folder, and move files either way:
 
 ### ⚙️ Settings › SSH — saved hosts
 
-No `~/.ssh/config` needed: each host is set up in Tendril.
+No `~/.ssh/config` needed: each host is set up in Tendril. The page lists your saved hosts
+(**Connect**, **Edit**); **Add host** opens an editor in three cards — **Connection**,
+**Authentication** (a *Key / Password / Both* switch; drop, paste or browse the key, which is then
+only ever shown as *Key saved in pass*) and **Port forwarding** (one line per forward, with an
+on/off switch). **Add host** / **Save** (or Enter) brings you back to the list with the host
+highlighted.
 
 | Field | |
 |---|---|
@@ -750,8 +845,9 @@ a folder carrying it is ever scanned — nothing else the explorer can see ends 
 
 ### 🪟 The graph pane
 
-The sidebar is split: **explorer on top, graph below**, with a drag handle between them.
-The **switch at the top of the sidebar** (or `Ctrl+Shift+G`) shows or hides the pane.
+The **graph button in the top bar** (or `Ctrl+Shift+G`, or **View › Toggle Graph Pane**) opens the
+graph as a **pane on the right** of the window, beside the editor; drag its left edge to resize it
+(the width is remembered), and ✕ closes it.
 
 - 👆 The pane stays empty until you **click a graph folder** in the explorer; then that
   folder's graph appears and **revolves on its own**.
@@ -852,8 +948,20 @@ script. 📤
 
 ## 🎨 Appearance
 
-The window is **frameless with a rounded boundary**. Drag the toolbar to move, double-click
-it to maximize, `☰` opens the menu, and the `–`/`□`/`✕` controls sit top-right.
+The window is **frameless with a rounded boundary**, laid out as rounded panels on a slightly
+darker background:
+
+- **One top bar**: `☰` (the app menu, drawn in your theme), the sidebar toggle, the open
+  documents as **pill tabs** with `+`, **Search notes**, then the terminal, graph and settings
+  buttons and the `–`/`□`/`✕` window controls. Drag an empty part of it to move the window;
+  double-click to maximize.
+- **The editor's tool strip**, inside the editor panel: Open and Save always; **TOC, Table,
+  Image, Chart, Export** and the **Edit / Split / Reading** switch for Markdown notes only. In a
+  narrow editor (graph pane open, small window) the tools show as icons. While the terminal is
+  maximized the document tools are disabled, with their shortcuts.
+- **The status bar** shows the open file's path as **breadcrumbs** (`Home › Downloads › note.md`);
+  click a folder to show it in the explorer. Transfer and terminal chips sit on its right.
+- **New files open in Edit view**, where Markdown always renders in place.
 
 **Settings › Appearance** offers:
 
@@ -1081,7 +1189,7 @@ src/
 
 templates/         📦  starter pack: Notes.md, Reports.md and their reference README
 icons/             🎨  application icon and the image at the top of this file
-scripts/           🔧  build helpers (Obsidian theme pre-import)
+scripts/           🔧  build helpers (Obsidian theme pre-import; after-pack.js makes node-pty's macOS spawn-helper executable)
 install.sh         🐳  one-command installer: builds in a throwaway container, adds the launcher entry (Linux, macOS)
 ```
 

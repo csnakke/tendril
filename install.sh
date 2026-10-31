@@ -5,19 +5,26 @@
 #   curl -fsSL https://raw.githubusercontent.com/csnakke/tendril/main/install.sh | bash
 #   curl -fsSL https://raw.githubusercontent.com/csnakke/tendril/main/install.sh | bash -s -- --uninstall
 #
-# Builds Tendril from source inside a throwaway Node container, so nothing but
-# the finished app lands on this machine: no Node, no npm, no node_modules.
+# Builds Tendril from source, so nothing but the finished app is left on this
+# machine: no Node, no npm, no node_modules.
 #
+# With Docker (the usual way):
 #   1. pull the Node image (only if it isn't here already)
-#   2. in a container: get the source → npm install → npm run compile → npm run build:<os>
+#   2. in a container: get the source → npm ci → npm run compile → npm run build:<os>
 #   3. copy the app out of the container
 #   4. remove the container, and the image if this script pulled it
+#
+# Without Docker (or with it stopped) it asks: get Docker and run this again,
+# or build here — Node.js (official build, checksum-verified), the source,
+# node_modules and every cache in a scratch folder that is deleted afterwards.
+# On Linux the terminal's native module needs a C++ compiler, make and python3;
+# if they are missing they are installed, and removing them again is offered.
 #
 # Result:  Linux  → ~/.local/share/tendril, with a launcher entry (app menu,
 #                   favourites, panel) and a `tendril` command in ~/.local/bin
 #          macOS  → ~/Applications/Tendril.app
 #
-# Needs: Docker (Docker Desktop, OrbStack, Colima, … on macOS) and curl.
+# Needs: curl, and Docker for the usual way (Docker Desktop, OrbStack, Colima, … on macOS).
 #
 # Also installs on this machine (not in Docker), when missing, what the
 # explorer's Remote section and its saved passwords use: pass and gnupg, a
@@ -34,6 +41,7 @@
 #   TENDRIL_PIN          1 = pin to the GNOME dock    (default: 1; Linux only)
 #   TENDRIL_SKIP_DEPS    1 = do not install pass, rsync, … on this machine
 #   TENDRIL_IMPORT       a backup (.tendril) to import after a fresh install
+#   TENDRIL_BUILD        docker or local: how to build, without asking
 
 set -euo pipefail
 
@@ -43,11 +51,37 @@ IMAGE="${TENDRIL_NODE_IMAGE:-node:22-bookworm}"
 PIN="${TENDRIL_PIN:-1}"
 SKIP_DEPS="${TENDRIL_SKIP_DEPS:-0}"
 
+# Printed by --help; it also works through curl | bash, where there is no file to read.
+usage() {
+  cat <<'USAGE'
+Tendril installer for Linux and macOS
+
+  curl -fsSL https://raw.githubusercontent.com/csnakke/tendril/main/install.sh | bash
+      install, or update to the latest main
+  … | bash -s -- --uninstall
+      export the settings (offered), then remove every trace of Tendril
+  … | bash -s -- --help
+      this text
+
+Switches (set them in front of bash: … | TENDRIL_BUILD=local bash):
+  TENDRIL_BUILD        docker or local; default: Docker when it runs, else ask
+  TENDRIL_REF          branch or tag to build (main)
+  TENDRIL_REPO         git URL or local folder (https://github.com/csnakke/tendril.git)
+  TENDRIL_INSTALL_DIR  folder the app goes in (Linux ~/.local/share, macOS ~/Applications)
+  TENDRIL_NODE_IMAGE   image for a Docker build (node:22-bookworm)
+  TENDRIL_PIN          1 = pin to the GNOME dock, 0 = don't (1)
+  TENDRIL_SKIP_DEPS    1 = don't install pass, gnupg, rsync, ssh, pinentry
+  TENDRIL_IMPORT       a .tendril backup to import after installing
+
+After installing: tendril, tendril <file>, tendril --export <file>, tendril --import <file>
+USAGE
+}
+
 ACTION=install
 case "${1:-}" in
   '') ;;
   --uninstall) ACTION=uninstall ;;
-  -h | --help) sed -n '2,/^$/s/^# \{0,1\}//p' "$0" 2>/dev/null || true; exit 0 ;;
+  -h | --help) usage; exit 0 ;;
   *) printf 'Unknown option: %s (use --uninstall, or no option to install)\n' "$1" >&2; exit 2 ;;
 esac
 
@@ -382,17 +416,184 @@ if [ "$SKIP_DEPS" != 1 ]; then
   have gpgconf && use_gui_pinentry
 fi
 
-# ---- Docker -------------------------------------------------------------------
+# ---- Building on this machine (no Docker) -----------------------------------------
+# Everything goes into the scratch folder ($WORK) and is deleted with it:
+# Node.js, the source, node_modules, npm's, node-gyp's and Electron's caches
+# and the build output. Only C++ build tools (Linux, for the terminal's native
+# module) may have to be installed system-wide; the person is offered to
+# remove exactly the ones this installer added.
 
-command -v docker >/dev/null 2>&1 || fail "Docker is required to build Tendril. Install Docker and run this again:
-    https://docs.docker.com/get-docker/"
+sha256() { if have sha256sum; then sha256sum "$1" | cut -d' ' -f1; else shasum -a 256 "$1" | cut -d' ' -f1; fi; }
 
-if ! docker info >/dev/null 2>&1; then
-  if [ "$OS" = linux ]; then
-    fail "Docker is installed but not reachable. Start it (sudo systemctl start docker), or add yourself to
-    the docker group (sudo usermod -aG docker \$USER, then log in again)."
+# The official Node.js 22 build for this OS and CPU, checked against nodejs.org's SHA-256 list.
+fetch_node() {
+  local base="https://nodejs.org/dist/latest-v22.x" plat file sum
+  case "$OS-$ARCH" in
+    linux-x64) plat=linux-x64 ;; linux-arm64) plat=linux-arm64 ;;
+    mac-x64) plat=darwin-x64 ;; mac-arm64) plat=darwin-arm64 ;;
+  esac
+  curl -fsSL "$base/SHASUMS256.txt" -o "$WORK/SHASUMS256.txt" || fail "Could not reach nodejs.org to fetch Node.js."
+  file="$(awk -v s="-$plat.tar.gz" 'substr($2, length($2) - length(s) + 1) == s { print $2; exit }' "$WORK/SHASUMS256.txt")"
+  [ -n "$file" ] || fail "nodejs.org has no Node.js 22 build for $plat."
+  sum="$(awk -v f="$file" '$2 == f { print $1 }' "$WORK/SHASUMS256.txt")"
+  curl -fsSL "$base/$file" -o "$WORK/$file" || fail "Could not download $file."
+  [ "$(sha256 "$WORK/$file")" = "$sum" ] || fail "$file does not match nodejs.org's checksum; not using it."
+  mkdir -p "$WORK/node"
+  tar -xzf "$WORK/$file" -C "$WORK/node" --strip-components=1
+  rm -f "$WORK/$file" "$WORK/SHASUMS256.txt"
+  info "Node.js $("$WORK/node/bin/node" --version) ($plat), checksum verified"
+}
+
+# The source into $WORK/src: a local folder as it is, a GitHub repository as its
+# archive (no git needed), anything else with git.
+fetch_source() {
+  if [ -d "$REPO" ]; then
+    copy_local_source "$WORK/src"
+  elif [[ "$REPO" =~ ^https://github\.com/([^/]+)/([^/]+)/?$ ]]; then
+    mkdir -p "$WORK/src"
+    curl -fsSL "https://github.com/${BASH_REMATCH[1]}/${BASH_REMATCH[2]%.git}/archive/$REF.tar.gz" | tar -xzf - -C "$WORK/src" --strip-components=1 ||
+      fail "Could not download the source of $REPO ($REF)."
+  elif have git; then
+    git clone --quiet --depth 1 --branch "$REF" "$REPO" "$WORK/src" || fail "Could not clone $REPO ($REF)."
+  else
+    fail "git is needed to fetch $REPO."
   fi
-  fail "Docker is installed but not running. Start Docker Desktop (or OrbStack / Colima) and run this again."
+}
+
+# Linux compiles the terminal's native module (node-pty): a C++ compiler, make and python3.
+ensure_build_tools() {
+  [ "$OS" = linux ] || return 0
+  if { have g++ || have c++; } && have make && have python3; then
+    info "C++ compiler, make and python3 are already installed."
+    return 0
+  fi
+  local pm="" wanted=() p
+  for c in apt-get dnf pacman zypper apk; do have "$c" && { pm="$c"; break; }; done
+  case "$pm" in
+    apt-get) wanted=(build-essential python3) ;;
+    dnf | zypper) wanted=(gcc gcc-c++ make python3) ;;
+    pacman) wanted=(base-devel python) ;;
+    apk) wanted=(build-base python3 linux-headers) ;;
+    *) fail "A C++ compiler, make and python3 are needed to build here; install them and run this again." ;;
+  esac
+  TOOLS_PM="$pm"
+  # Only what is not there yet: those are the ones offered for removal afterwards.
+  for p in "${wanted[@]}"; do
+    case "$pm" in
+      apt-get) dpkg -s "$p" >/dev/null 2>&1 && continue ;;
+      dnf | zypper) rpm -q "$p" >/dev/null 2>&1 && continue ;;
+      pacman) pacman -Q "$p" >/dev/null 2>&1 && continue ;;
+      apk) apk info -e "$p" >/dev/null 2>&1 && continue ;;
+    esac
+    TOOLS_ADDED+=("$p")
+  done
+  [ "${#TOOLS_ADDED[@]}" -gt 0 ] || return 0
+  # apt keeps dependencies around; remember what was already removable, so only ours go later.
+  [ "$pm" = apt-get ] && APT_ORPHANS_BEFORE="$(apt-get -s autoremove 2>/dev/null | awk '/^Remv/ { print $2 }' | sort)"
+  step "Installing build tools: ${TOOLS_ADDED[*]} ($pm, asks for sudo)"
+  case "$pm" in
+    apt-get) as_root apt-get update -qq && as_root env DEBIAN_FRONTEND=noninteractive apt-get install -y -qq "${TOOLS_ADDED[@]}" ;;
+    dnf) as_root dnf install -y -q "${TOOLS_ADDED[@]}" ;;
+    pacman) as_root pacman -S --needed --noconfirm "${TOOLS_ADDED[@]}" ;;
+    zypper) as_root zypper --non-interactive install "${TOOLS_ADDED[@]}" ;;
+    apk) as_root apk add "${TOOLS_ADDED[@]}" ;;
+  esac || { TOOLS_ADDED=(); fail "Could not install the build tools; install a C++ compiler, make and python3 yourself and run this again."; }
+}
+
+# Offered once, at the end (also after a failed build): remove exactly what ensure_build_tools added.
+remove_build_tools() {
+  [ "${#TOOLS_ADDED[@]}" -gt 0 ] || return 0
+  local list=("${TOOLS_ADDED[@]}") extra
+  TOOLS_ADDED=()
+  if ! ask "Remove the build tools this installer added (${list[*]})?" y; then
+    info "Kept: ${list[*]}"
+    return 0
+  fi
+  case "$TOOLS_PM" in
+    apt-get)
+      as_root env DEBIAN_FRONTEND=noninteractive apt-get purge -y -qq "${list[@]}" >/dev/null || true
+      # The dependencies they pulled in: newly removable now, and not removable before.
+      extra="$(comm -13 <(printf '%s\n' "$APT_ORPHANS_BEFORE") <(apt-get -s autoremove 2>/dev/null | awk '/^Remv/ { print $2 }' | sort) | tr '\n' ' ')"
+      # shellcheck disable=SC2086 # a list of package names
+      [ -z "${extra// /}" ] || as_root env DEBIAN_FRONTEND=noninteractive apt-get purge -y -qq $extra >/dev/null || true
+      ;;
+    dnf) as_root dnf remove -y -q "${list[@]}" || true ;;
+    pacman) as_root pacman -Rns --noconfirm "${list[@]}" || true ;;
+    zypper) as_root zypper --non-interactive rm -u "${list[@]}" || true ;;
+    apk) as_root apk del "${list[@]}" || true ;;
+  esac
+  info "removed ${list[*]}"
+}
+
+build_locally() {
+  ensure_build_tools
+  step "Fetching Node.js 22 (temporary, removed afterwards)"
+  fetch_node
+  if [ -d "$REPO" ]; then step "Using the local folder $REPO"; else step "Fetching the source ($REF)"; fi
+  fetch_source
+  step "Building Tendril on this machine"
+  info "npm ci → npm run compile → npm run build:$OS"
+  info "This takes a few minutes."
+  (
+    export PATH="$WORK/node/bin:$PATH" SRC="$WORK/src" OUT="$WORK" REPO REF OS ARCH \
+      npm_config_cache="$WORK/npm-cache" npm_config_devdir="$WORK/node-gyp" \
+      ELECTRON_CACHE="$WORK/electron-cache" electron_config_cache="$WORK/electron-cache" \
+      ELECTRON_BUILDER_CACHE="$WORK/eb-cache" XDG_CACHE_HOME="$WORK/cache" CSC_IDENTITY_AUTO_DISCOVERY=false
+    bash -c "$BUILD"
+  ) >"$LOG" 2>&1 || build_failed
+}
+
+# ---- How to build: in Docker, or on this machine --------------------------------
+# Docker keeps the machine clean by construction. Without it (or with it
+# stopped) the person chooses: get Docker and run this again, or build here
+# with a temporary Node.js and build tools that are removed afterwards.
+
+docker_hint() {
+  if [ "$OS" = mac ]; then
+    printf '%s\n' "    Docker Desktop: https://www.docker.com/products/docker-desktop/" \
+      "    or OrbStack:    brew install --cask orbstack" \
+      "    or Colima:      brew install colima docker && colima start"
+  elif ! have docker; then
+    printf '%s\n' "    curl -fsSL https://get.docker.com | sh" \
+      "    sudo usermod -aG docker \$USER     (then log out and back in)" \
+      "    or your distribution's docker package: https://docs.docker.com/engine/install/"
+  else
+    printf '%s\n' "    sudo systemctl start docker" \
+      "    and if it is not that: sudo usermod -aG docker \$USER (then log out and back in)"
+  fi
+}
+
+BUILD_MODE="${TENDRIL_BUILD:-}"
+case "$BUILD_MODE" in '' | docker | local) ;; *) fail "TENDRIL_BUILD must be docker or local (got $BUILD_MODE)." ;; esac
+if [ -z "$BUILD_MODE" ]; then
+  if have docker && docker info >/dev/null 2>&1; then
+    BUILD_MODE=docker
+  else
+    if have docker; then why="Docker is installed but not running (or not reachable)."; first="Start Docker first"; else why="Docker is not installed."; first="Install Docker first"; fi
+    if ! { : </dev/tty; } 2>/dev/null; then
+      fail "$why Either get Docker going and run this again:
+$(docker_hint)
+    or build on this machine without Docker: TENDRIL_BUILD=local (temporary build tools, removed afterwards)."
+    fi
+    printf '\n%s%s%s How do you want to build Tendril?\n' "$BOLD" "$why" "$RESET" >/dev/tty
+    printf '  1) %s   (stops here; run this command again afterwards)\n' "$first" >/dev/tty
+    printf '  2) Build on this machine   (temporary Node.js and build tools, removed afterwards)\n' >/dev/tty
+    choice=""
+    while [ "$choice" != 1 ] && [ "$choice" != 2 ]; do
+      printf 'Choose 1 or 2: ' >/dev/tty
+      read -r choice </dev/tty || fail "No choice made; nothing was changed."
+    done
+    if [ "$choice" = 1 ]; then
+      printf '\n%s:\n' "$first"
+      docker_hint
+      printf '\nThen run the same install command again.\n'
+      exit 0
+    fi
+    BUILD_MODE=local
+  fi
+elif [ "$BUILD_MODE" = docker ] && ! { have docker && docker info >/dev/null 2>&1; }; then
+  fail "TENDRIL_BUILD=docker, but Docker is not available:
+$(docker_hint)"
 fi
 
 # The build runs natively on this machine's CPU; the app is built for that CPU too.
@@ -402,73 +603,61 @@ case "$ARCH" in
 esac
 
 # ---- Cleanup ------------------------------------------------------------------
-# Whatever happens, leave nothing behind: the scratch folder, the container,
-# and the image if this script was the one that pulled it.
+# Whatever happens, leave nothing behind: the scratch folder (with the local
+# build's Node.js, sources, caches and output), the container, the image if
+# this script pulled it, and build tools it installed if the person agrees.
 
 WORK="$(mktemp -d "${TMPDIR:-/tmp}/tendril-install.XXXXXX")"
 CONTAINER="tendril-build-$$"
 PULLED=0
+TOOLS_ADDED=()
+TOOLS_PM=""
+APT_ORPHANS_BEFORE=""
 
 cleanup() {
   local status=$?
-  docker rm -f "$CONTAINER" >/dev/null 2>&1 || true
-  if [ "$PULLED" = 1 ]; then
-    step "Removing the build image ($IMAGE)"
-    docker rmi "$IMAGE" >/dev/null 2>&1 || warn "could not remove $IMAGE; remove it with: docker rmi $IMAGE"
+  if [ "$BUILD_MODE" = docker ]; then
+    docker rm -f "$CONTAINER" >/dev/null 2>&1 || true
+    if [ "$PULLED" = 1 ]; then
+      step "Removing the build image ($IMAGE)"
+      docker rmi "$IMAGE" >/dev/null 2>&1 || warn "could not remove $IMAGE; remove it with: docker rmi $IMAGE"
+    fi
   fi
   rm -rf "$WORK"
+  remove_build_tools
   exit "$status"
 }
 trap cleanup EXIT
 trap 'exit 130' INT TERM
 
-# ---- Build --------------------------------------------------------------------
+# ---- The build itself ------------------------------------------------------------
+# The same script builds in the container (SRC=/work, OUT=/out) and on this
+# machine (inside $WORK). It fetches the source unless SRC already holds it.
 
-printf '\n%sTendril installer%s  %s(%s, %s)%s\n\n' "$BOLD" "$RESET" "$DIM" "$OS" "$ARCH" "$RESET"
-
-if docker image inspect "$IMAGE" >/dev/null 2>&1; then
-  info "Using the $IMAGE image already on this machine (it will be kept)."
-else
-  step "Pulling $IMAGE"
-  PULLED=1
-  docker pull --platform "$DOCKER_PLATFORM" "$IMAGE" >/dev/null
-fi
-
-if [ -d "$REPO" ]; then
-  step "Building Tendril (local folder $REPO) inside the container"
-else
-  step "Building Tendril ($REF) inside the container"
-fi
-info "npm install → npm run compile → npm run build:$OS"
-info "This takes a few minutes."
-
-# The build script runs inside the container. Nothing is mounted: source and
-# app are copied in and out with `docker cp`, which works the same on every
-# Docker setup (Docker Desktop, OrbStack, Colima, rootless, …).
 BUILD='
 set -euo pipefail
-export ELECTRON_BUILDER_CACHE=/tmp/eb-cache npm_config_update_notifier=false npm_config_fund=false npm_config_audit=false
-if [ ! -d /work ]; then
+export npm_config_update_notifier=false npm_config_fund=false npm_config_audit=false
+if [ ! -d "$SRC" ]; then
   echo "--> git clone $REPO ($REF)"
-  git clone --quiet --depth 1 --branch "$REF" "$REPO" /work
+  git clone --quiet --depth 1 --branch "$REF" "$REPO" "$SRC"
 fi
-cd /work
-echo "--> npm install"
-npm install --loglevel=error
+cd "$SRC"
+echo "--> npm ci"
+if [ -f package-lock.json ]; then npm ci --loglevel=error; else npm install --loglevel=error; fi
 echo "--> npm run compile"
 npm run compile
-mkdir -p /out
+mkdir -p "$OUT"
 if [ "$OS" = linux ]; then
   echo "--> npm run build:linux -- --$ARCH"
   npm run build:linux -- "--$ARCH" --publish never
-  tar -C "$(ls -d dist/linux*-unpacked | head -n 1)" -czf /out/tendril-linux.tgz .
-  # Launcher icons. The base image normally has ImageMagick; without it the
-  # full-size icon is installed and desktops scale it themselves.
-  mkdir -p /out/icons
-  cp icons/icon.png /out/icons/1024.png
+  tar -C "$(ls -d dist/linux*-unpacked | head -n 1)" -czf "$OUT/tendril-linux.tgz" .
+  # Launcher icons. ImageMagick, where there is one, makes the smaller sizes;
+  # without it the full-size icon is installed and desktops scale it themselves.
+  mkdir -p "$OUT/icons"
+  cp icons/icon.png "$OUT/icons/1024.png"
   if command -v convert >/dev/null 2>&1; then
     for size in 512 256 128 64 48 32; do
-      convert icons/icon.png -resize "${size}x${size}" "/out/icons/$size.png" || true
+      convert icons/icon.png -resize "${size}x${size}" "$OUT/icons/$size.png" || true
     done
   fi
 else
@@ -476,30 +665,50 @@ else
   # framework loses its symlinks and macOS rejects the bundle. tar keeps them.
   echo "--> npm run build:mac -- --$ARCH --dir"
   npm run build:mac -- "--$ARCH" --dir --publish never
-  tar -C "$(dirname "$(ls -d dist/mac*/Tendril.app | head -n 1)")" -czf /out/Tendril.app.tgz Tendril.app
+  tar -C "$(dirname "$(ls -d dist/mac*/Tendril.app | head -n 1)")" -czf "$OUT/Tendril.app.tgz" Tendril.app
 fi
 '
 
-docker create --name "$CONTAINER" --platform "$DOCKER_PLATFORM" \
-  -e REPO="$REPO" -e REF="$REF" -e OS="$OS" -e ARCH="$ARCH" \
-  "$IMAGE" bash -c "$BUILD" >/dev/null
+printf '\n%sTendril installer%s  %s(%s, %s, %s build)%s\n\n' "$BOLD" "$RESET" "$DIM" "$OS" "$ARCH" "$BUILD_MODE" "$RESET"
 
-# A local folder is copied in as it is on disk (uncommitted changes included),
-# minus anything built on this machine.
-if [ -d "$REPO" ]; then
-  mkdir "$WORK/src"
-  tar -C "$REPO" --exclude=node_modules --exclude=out --exclude=dist --exclude=.git -cf - . | tar -C "$WORK/src" -xf -
-  docker cp "$WORK/src" "$CONTAINER:/work" >/dev/null
-fi
+# A local folder's files as they are on disk (uncommitted changes included), minus build output.
+copy_local_source() {
+  mkdir -p "$1"
+  tar -C "$REPO" --exclude=node_modules --exclude=out --exclude=dist --exclude=.git -cf - . | tar -C "$1" -xf -
+}
 
 LOG="$WORK/build.log"
-if ! docker start -a "$CONTAINER" >"$LOG" 2>&1; then
+build_failed() {
   printf '\n%s--- last lines of the build log ---%s\n' "$DIM" "$RESET" >&2
   tail -n 30 "$LOG" >&2
   fail "The build failed (see above)."
-fi
+}
 
-docker cp "$CONTAINER:/out/." "$WORK/" >/dev/null
+if [ "$BUILD_MODE" = docker ]; then
+  if docker image inspect "$IMAGE" >/dev/null 2>&1; then
+    info "Using the $IMAGE image already on this machine (it will be kept)."
+  else
+    step "Pulling $IMAGE"
+    PULLED=1
+    docker pull --platform "$DOCKER_PLATFORM" "$IMAGE" >/dev/null
+  fi
+  if [ -d "$REPO" ]; then step "Building Tendril (local folder $REPO) inside the container"; else step "Building Tendril ($REF) inside the container"; fi
+  info "npm ci → npm run compile → npm run build:$OS"
+  info "This takes a few minutes."
+  # Nothing is mounted: source and app are copied in and out with `docker cp`,
+  # which works the same on every Docker setup (Docker Desktop, OrbStack, Colima, rootless, …).
+  docker create --name "$CONTAINER" --platform "$DOCKER_PLATFORM" \
+    -e REPO="$REPO" -e REF="$REF" -e OS="$OS" -e ARCH="$ARCH" -e SRC=/work -e OUT=/out -e ELECTRON_BUILDER_CACHE=/tmp/eb-cache \
+    "$IMAGE" bash -c "$BUILD" >/dev/null
+  if [ -d "$REPO" ]; then
+    copy_local_source "$WORK/src"
+    docker cp "$WORK/src" "$CONTAINER:/work" >/dev/null
+  fi
+  docker start -a "$CONTAINER" >"$LOG" 2>&1 || build_failed
+  docker cp "$CONTAINER:/out/." "$WORK/" >/dev/null
+else
+  build_locally
+fi
 
 # ---- Install: Linux -----------------------------------------------------------
 
@@ -669,6 +878,8 @@ install_mac() {
   # Built on Linux, the app is unsigned; Apple Silicon refuses to run unsigned
   # code, so sign it ad hoc for this machine. The terminal's native module and
   # its helper sit outside the bundle's code folders, where --deep does not look.
+  # The helper must also be executable, or no shell can start.
+  find "$target/Contents/Resources" -type f -name spawn-helper -exec chmod 755 {} \; 2>/dev/null || true
   find "$target/Contents/Resources" -type f \( -name '*.node' -o -name spawn-helper \) \
     -exec codesign --force --sign - {} \; >/dev/null 2>&1 || true
   codesign --force --deep --sign - "$target" >/dev/null 2>&1 || warn "ad-hoc signing failed; macOS may refuse to open the app."
