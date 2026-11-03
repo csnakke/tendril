@@ -434,6 +434,11 @@ the new keys, `↺` restores the default. On macOS read `Ctrl` as `⌘`.
 > 💡 The table of contents, inserts and export work in Markdown notes only — in a `.txt`,
 > `.py` or `.js` file their buttons are greyed out.
 
+In Edit view the line with the cursor shows its Markdown source and the rest stay rendered
+(`•` for `*`, code without backticks). **`↑` / `↓` (and `Shift+↑` / `Shift+↓`) move exactly one
+line**, even though lines change shape as the cursor passes; only a folded section is jumped
+over as a whole.
+
 Files open in **tabs** — drag to reorder, middle-click to close. Closing the window never
 asks: like Sublime Text's hot exit, every open tab and any unsaved text in it is kept and
 comes back on the next start (stored in the app's `session.json`, readable only by you).

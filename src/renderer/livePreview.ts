@@ -1,6 +1,6 @@
-import { Decoration, EditorView, ViewPlugin, WidgetType, type DecorationSet, type ViewUpdate } from '@codemirror/view'
-import { syntaxTree } from '@codemirror/language'
-import { StateField, type EditorState, type Range } from '@codemirror/state'
+import { Decoration, EditorView, ViewPlugin, WidgetType, keymap, type Command, type DecorationSet, type ViewUpdate } from '@codemirror/view'
+import { foldedRanges, syntaxTree } from '@codemirror/language'
+import { EditorSelection, Prec, StateField, type EditorState, type Range, type SelectionRange } from '@codemirror/state'
 import { PropertiesWidget } from './propertiesWidget'
 import { parseMarker, parseOptions } from './tables/model'
 import { safeDecodeURI } from './paths'
@@ -340,8 +340,55 @@ const propertiesField = StateField.define<DecorationSet>({
 })
 
 export function livePreview(resolveImage: ImageResolver = (s) => s) {
-  return [propertiesField, inlinePlugin(resolveImage)]
+  return [propertiesField, inlinePlugin(resolveImage), Prec.high(verticalKeys)]
 }
+
+// ---- Up / Down ------------------------------------------------------------------------
+
+/**
+ * Up and Down move by what is on screen, and here the screen changes under
+ * the cursor: the line it leaves goes back to rendered (• for *, code without
+ * backticks) and the line it enters shows its source. CodeMirror measures the
+ * layout from before that switch and can land a line too far (from the start
+ * of a list item, Up skipped the item above). A move that passes over a line
+ * that is not folded away goes to the next line instead, same column.
+ */
+function moveLine(view: EditorView, range: SelectionRange, forward: boolean): SelectionRange {
+  const { state } = view
+  const moved = view.moveVertically(range, forward)
+  const from = state.doc.lineAt(range.head)
+  const to = state.doc.lineAt(moved.head)
+  if (Math.abs(to.number - from.number) <= 1) return moved
+  const next = from.number + (forward ? 1 : -1)
+  if (next < 1 || next > state.doc.lines) return moved
+  // Lines in between hidden by a fold: jumping over them is right.
+  const skipFrom = state.doc.line(Math.min(next, to.number)).from
+  const skipTo = state.doc.line(Math.max(next, to.number)).to
+  let folded = false
+  foldedRanges(state).between(skipFrom, skipTo, (a, b) => {
+    if (a <= state.doc.line(next).from && b >= state.doc.line(next).to) folded = true
+  })
+  if (folded) return moved
+  const line = state.doc.line(next)
+  return EditorSelection.cursor(line.from + Math.min(range.head - from.from, line.length), 0, undefined, moved.goalColumn)
+}
+
+const move = (forward: boolean, extend: boolean): Command => (view) => {
+  const sel = view.state.selection
+  // A selection collapses to its edge first, as CodeMirror does.
+  const ranges = sel.ranges.map((r) => {
+    if (!extend && !r.empty) return EditorSelection.cursor(forward ? r.to : r.from)
+    const head = moveLine(view, r, forward)
+    return extend ? EditorSelection.range(r.anchor, head.head) : head
+  })
+  view.dispatch({ selection: EditorSelection.create(ranges, sel.mainIndex), scrollIntoView: true, userEvent: 'select' })
+  return true
+}
+
+const verticalKeys = keymap.of([
+  { key: 'ArrowUp', run: move(false, false), shift: move(false, true) },
+  { key: 'ArrowDown', run: move(true, false), shift: move(true, true) }
+])
 
 function inlinePlugin(resolveImage: ImageResolver) {
   return ViewPlugin.fromClass(
