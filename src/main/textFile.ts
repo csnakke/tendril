@@ -25,24 +25,38 @@ export type ReadResult = { text: string } | { error: string }
 
 const mb = (bytes: number): string => `${(bytes / 1024 / 1024).toFixed(1).replace(/\.0$/, '')} MB`
 
+/** Why a file of this name is refused before reading it (a known binary format), or null. */
+export function binaryByName(path: string): string | null {
+  const ext = extname(path)
+  return KNOWN_BINARY.test(ext) ? `It is a ${ext.slice(1).toUpperCase()} file, which is binary, not text.` : null
+}
+
+export const tooLarge = (bytes: number): string | null =>
+  bytes > MAX_TEXT_BYTES ? `It is ${mb(bytes)}; Tendril opens text files up to ${mb(MAX_TEXT_BYTES)}.` : null
+
+/** A file's bytes as text, or why they are not (shared by local and remote files). */
+export function textFromBuffer(path: string, buf: Buffer): ReadResult {
+  if (KNOWN_TEXT.test(extname(path))) return { text: buf.toString('utf8') }
+  if (buf.subarray(0, SNIFF_BYTES).includes(0)) return { error: 'It contains binary data, so it is not a text file.' }
+  try {
+    // ignoreBOM keeps a leading BOM in the text, as readFile(…, 'utf8') did, so a save writes it back.
+    return { text: new TextDecoder('utf-8', { fatal: true, ignoreBOM: true }).decode(buf) }
+  } catch {
+    return { error: 'It is not UTF-8 text: it is binary, or saved in another encoding (such as Latin-1 or UTF-16).' }
+  }
+}
+
 /** The file's text, or why it cannot be opened (binary, too large, a folder, missing, …). */
 export async function readTextFile(path: string): Promise<ReadResult> {
-  const ext = extname(path)
-  if (KNOWN_BINARY.test(ext)) return { error: `It is a ${ext.slice(1).toUpperCase()} file, which is binary, not text.` }
+  const binary = binaryByName(path)
+  if (binary) return { error: binary }
   try {
     const st = await fs.stat(path)
     if (st.isDirectory()) return { error: 'It is a folder, not a file.' }
     if (!st.isFile()) return { error: 'It is not a regular file.' }
-    if (st.size > MAX_TEXT_BYTES) return { error: `It is ${mb(st.size)}; Tendril opens text files up to ${mb(MAX_TEXT_BYTES)}.` }
-    const buf = await fs.readFile(path)
-    if (KNOWN_TEXT.test(ext)) return { text: buf.toString('utf8') }
-    if (buf.subarray(0, SNIFF_BYTES).includes(0)) return { error: 'It contains binary data, so it is not a text file.' }
-    try {
-      // ignoreBOM keeps a leading BOM in the text, as readFile(…, 'utf8') did, so a save writes it back.
-      return { text: new TextDecoder('utf-8', { fatal: true, ignoreBOM: true }).decode(buf) }
-    } catch {
-      return { error: 'It is not UTF-8 text: it is binary, or saved in another encoding (such as Latin-1 or UTF-16).' }
-    }
+    const big = tooLarge(st.size)
+    if (big) return { error: big }
+    return textFromBuffer(path, await fs.readFile(path))
   } catch (err) {
     const code = (err as NodeJS.ErrnoException).code
     if (code === 'ENOENT') return { error: 'The file does not exist; it may have been moved or deleted.' }

@@ -228,6 +228,15 @@ const api = {
   remoteForward: (id: string, on: boolean): Promise<void> => ipcRenderer.invoke('remote:forward', id, on),
   /** Open a shell on the connected host in terminal `terminal` (its sudo prompt carries Tendril's marker). */
   remoteOpenShell: (terminal: number): Promise<void> => ipcRenderer.invoke('remote:openShell', terminal),
+  /** A remote file for the editor; its tab path is ssh://<host><path>. */
+  remoteReadFile: (path: string): Promise<{ path: string; content: string; writable: boolean } | { path: string; error: string }> =>
+    ipcRenderer.invoke('remote:readFile', path),
+  /** The file of a remote tab, read again (after a conflict). */
+  remoteReloadFile: (uri: string): Promise<{ path: string; content: string; writable: boolean } | { path: string; error: string }> =>
+    ipcRenderer.invoke('remote:reloadFile', uri),
+  /** Save a remote tab: conflict when the file changed on the server since it was read, unless `force`. */
+  remoteWriteFile: (uri: string, content: string, force: boolean): Promise<{ ok: true } | { conflict: true }> =>
+    ipcRenderer.invoke('remote:writeFile', uri, content, force),
   remoteUpload: (paths: string[], dir: string): Promise<void> => ipcRenderer.invoke('remote:upload', paths, dir),
   remoteDownload: (paths: string[], localDir: string | null): Promise<void> => ipcRenderer.invoke('remote:download', paths, localDir),
   remoteContextMenu: (path: string, isDir: boolean, localRoot: string | null): void => ipcRenderer.send('remote:contextMenu', path, isDir, localRoot),

@@ -10,6 +10,7 @@ import { passGetSecret, passHas, passMove, passRemove, passReveal, passSegment, 
 import { OPENROUTER_ENTRY, moveOpenRouterKeyToPass } from '../aiKey'
 import { Transfers } from './transfers'
 import { bumpSudoVersion, LOCAL, newMarker, renameSudoHost, setTerminalHost } from './sudoState'
+import { binaryByName, MAX_TEXT_BYTES, textFromBuffer, tooLarge } from '../textFile'
 
 /**
  * The Remote section of the explorer: saved hosts (Settings › SSH), the one
@@ -352,6 +353,54 @@ function need(): Connection {
   return conn
 }
 
+// ---- Remote files in the editor ---------------------------------------------------------
+// A remote file's tab has the path ssh://<connection label><absolute path>. Its
+// stamp from when it was read is kept here, so a save notices when the file
+// changed on the server meanwhile.
+
+const stamps = new Map<string, string>()
+
+export const remoteUri = (label: string, path: string): string => `ssh://${label}${path}`
+
+function parseUri(uri: string): { label: string; path: string } | null {
+  const m = /^ssh:\/\/([^/]+)(\/.*)$/.exec(String(uri ?? ''))
+  return m ? { label: m[1], path: m[2] } : null
+}
+
+/** The connection a remote tab belongs to: the open one, if it is to that host. */
+function connectionFor(label: string): Connection {
+  if (!conn || conn.label !== label) throw new Error(`Not connected to ${label}. Connect to it in the explorer's Remote section, then save again.`)
+  return conn
+}
+
+async function readRemote(path: string): Promise<{ path: string; content: string; writable: boolean } | { path: string; error: string }> {
+  const c = need()
+  const uri = remoteUri(c.label, path)
+  const binary = binaryByName(path)
+  if (binary) return { path: uri, error: binary }
+  try {
+    const f = await c.readFile(path, MAX_TEXT_BYTES)
+    const big = tooLarge(f.size)
+    if (big) return { path: uri, error: big }
+    const read = textFromBuffer(path, f.data)
+    if ('error' in read) return { path: uri, error: read.error }
+    stamps.set(uri, f.stamp)
+    return { path: uri, content: read.text, writable: f.writable }
+  } catch (err) {
+    return { path: uri, error: (err as Error).message }
+  }
+}
+
+/** Save a remote tab; `force` writes even when the file changed on the server. */
+async function writeRemote(uri: string, content: string, force: boolean): Promise<{ ok: true } | { conflict: true }> {
+  const p = parseUri(uri)
+  if (!p) throw new Error('Not a remote file.')
+  const r = await connectionFor(p.label).writeFile(p.path, String(content ?? ''), force ? '' : stamps.get(uri) ?? '?')
+  if ('conflict' in r) return r
+  stamps.set(uri, r.stamp)
+  return { ok: true }
+}
+
 async function upload(paths: string[], dir: string): Promise<void> {
   const c = need()
   for (const p of paths) {
@@ -470,6 +519,14 @@ export function registerRemote(handle: Handle, on: On, win: () => BrowserWindow 
     setTerminalHost(Number(terminal), host)
     return run(Number(terminal), c.shellArgs(marker), c.label)
   })
+  handle('remote:readFile', (_e, path: string) => readRemote(String(path)))
+  handle('remote:reloadFile', (_e, uri: string) => {
+    const p = parseUri(uri)
+    if (!p) throw new Error('Not a remote file.')
+    connectionFor(p.label)
+    return readRemote(p.path)
+  })
+  handle('remote:writeFile', (_e, uri: string, content: string, force: boolean) => writeRemote(uri, content, !!force))
   handle('remote:upload', (_e, paths: string[], dir: string) => upload(Array.isArray(paths) ? paths : [], String(dir)))
   handle('remote:download', (_e, paths: string[], localDir: string | null) => download(Array.isArray(paths) ? paths : [], typeof localDir === 'string' ? localDir : null))
   on('remote:contextMenu', (e, path: string, isDir: boolean, localRoot: string | null) => {

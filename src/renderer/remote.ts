@@ -11,9 +11,9 @@ import { activeTransfers } from './transfersPanel'
 
 /**
  * The explorer's Remote section: connect to a saved host (Settings › SSH) or
- * a quick user@host, browse its folders like local ones, and move files:
- * drop local files or folders on a remote folder to upload, right-click to
- * download. Port forwards of the host show as switches under the header.
+ * a quick user@host, browse its folders like local ones, open a text file in
+ * an editor tab (Save writes it back), and move files: drop local files or
+ * folders on a remote folder to upload, right-click to download. Port forwards of the host show as switches under the header.
  * Everything over SSH happens in the main process (main/ssh/).
  */
 
@@ -167,6 +167,12 @@ function list(dir: string, depth: number): HTMLUListElement {
   return ul
 }
 
+let openFile: (path: string) => Promise<void> = async () => {}
+/** How a clicked remote file opens (main.ts: in an editor tab). */
+export function onRemoteFileOpen(open: (path: string) => Promise<void>): void {
+  openFile = open
+}
+
 const liOf = (t: EventTarget | null): HTMLElement | null => (t as HTMLElement | null)?.closest<HTMLElement>('li[data-path]') ?? null
 
 treeEl.addEventListener('click', (e) => {
@@ -178,6 +184,9 @@ treeEl.addEventListener('click', (e) => {
     selected = path
     window.api.remoteSelect(path)
     void toggle(path)
+  } else if (li.dataset.kind === 'file') {
+    // Opens in an editor tab, like a local file; Save writes it back to the server.
+    void openFile(path)
   }
 })
 treeEl.addEventListener('dblclick', (e) => {

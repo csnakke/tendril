@@ -28,7 +28,7 @@ import { IMAGE_FILE, dirOf, isMarkdownFile } from './paths'
 import { initGraphPane, toggleGraphPane } from './graph/pane'
 import { documentShown, initTerminal, pasteSudo, terminalMaximized, toggleTerminal } from './terminal'
 // The explorer's Remote section (SSH), ssh's password dialog and the transfers chip wire themselves up.
-import './remote'
+import { onRemoteFileOpen } from './remote'
 import './sshPrompt'
 import { decorateCodeBlocks, setDocKey } from './codeRun'
 import { openAppMenu } from './appMenu'
@@ -136,6 +136,8 @@ interface Tab {
    * editor text is always LF; the original ending is put back on save. */
   eol: '\n' | '\r\n'
   dirty: boolean
+  /** A remote file (path ssh://…) the server will not let you write. */
+  readOnly?: boolean
   /** Where the tab was scrolled when it was left; null = bring the caret into view. */
   scroll: { editor: StateEffect<unknown>; preview: number } | null
 }
@@ -174,7 +176,7 @@ tabs.push(active)
 const view = new EditorView({ parent: editorEl, state: active.state })
 
 installTableMenu(view, () => openPromptBar(view), () => isMarkdownFile(active.path))
-initImages({ view, docPath: () => active.path, save: () => save(false) })
+initImages({ view, docPath: () => localPath(active.path), save: () => save(false) })
 
 function source(): string {
   return view.state.doc.toString()
@@ -187,6 +189,11 @@ function textOf(tab: Tab): string {
 
 /** An untitled tab nobody has typed into: opening a file reuses it. */
 const isBlank = (tab: Tab): boolean => !tab.path && !tab.dirty
+
+/** A file on a server, opened from the Remote section: ssh://<host><path>. */
+const isRemotePath = (p: string | null): boolean => !!p && p.startsWith('ssh://')
+/** The path where a local file is expected (images, explorer, terminal folder); none for a remote one. */
+const localPath = (p: string | null): string | null => (isRemotePath(p) ? null : p)
 
 const nameOf = (tab: Tab): string => (tab.path ? tab.path.split(/[\\/]/).pop()! : 'untitled.md')
 
@@ -253,6 +260,7 @@ function renderPath(path: string | null): void {
     statusPathEl.replaceChildren()
     return
   }
+  if (isRemotePath(path)) return renderRemotePath(path)
   const sep = path.includes('\\') && !path.includes('/') ? '\\' : '/'
   const inHome = !!home && (path === home || path.startsWith(home + sep))
   const rest = (inHome ? path.slice(home!.length) : path).split(/[\\/]/).filter(Boolean)
@@ -285,6 +293,33 @@ function renderPath(path: string | null): void {
   statusPathEl.title = path
 }
 
+/** host › folders › file for a remote tab (and whether the server lets you save it). */
+function renderRemotePath(uri: string): void {
+  const m = /^ssh:\/\/([^/]+)(\/.*)$/.exec(uri)
+  const parts = m ? [m[1], ...m[2].split('/').filter(Boolean)] : [uri]
+  const els: Node[] = []
+  parts.forEach((label, i) => {
+    if (i) {
+      const chev = document.createElement('span')
+      chev.className = 'crumb-sep'
+      chev.textContent = '›'
+      els.push(chev)
+    }
+    const el = document.createElement('span')
+    el.className = i === 0 ? 'crumb remote-host' : i === parts.length - 1 ? 'crumb current' : 'crumb'
+    el.textContent = label
+    els.push(el)
+  })
+  if (active.readOnly) {
+    const ro = document.createElement('span')
+    ro.className = 'crumb remote-ro'
+    ro.textContent = 'read-only on the server'
+    els.push(ro)
+  }
+  statusPathEl.replaceChildren(...els)
+  statusPathEl.title = m ? `${m[1]}:${m[2]}` : uri
+}
+
 /** Title bar, file name, status bar, explorer and tab strip follow the shown tab. */
 function showActive(): void {
   const path = active.path
@@ -292,7 +327,7 @@ function showActive(): void {
   filenameEl.textContent = nameOf(active)
   renderPath(path)
   applyMode()
-  sidebarFileOpened(path)
+  sidebarFileOpened(localPath(path))
   updateDirty()
   drawTabs()
 }
@@ -457,6 +492,17 @@ async function openPath(path: string): Promise<void> {
   else await alertBox('Cannot open file', `${path.split(/[\\/]/).pop()}\n\n${f.error}`)
 }
 
+/** Open a file from the Remote section (over the open connection). */
+async function openRemote(path: string): Promise<void> {
+  const f = await window.api.remoteReadFile(path)
+  const open = tabs.find((t) => t.path === f.path)
+  if (open) return activate(open)
+  if ('error' in f) return alertBox('Cannot open file', `${path.split('/').pop()}\n\n${f.error}`)
+  await openDocument(f.content, f.path)
+  active.readOnly = !f.writable
+  renderPath(active.path)
+}
+
 /**
  * Replace the document as one undoable change. Only the part that differs is
  * touched (common prefix and suffix are kept), so the selection and scroll
@@ -484,7 +530,7 @@ function renderPreview(): void {
   }
   const top = previewEl.scrollTop
   const src = source()
-  previewEl.innerHTML = renderBody(src, imageEnv(active.path, 'preview'))
+  previewEl.innerHTML = renderBody(src, imageEnv(localPath(active.path), 'preview'))
   decorateCodeBlocks(previewEl)
   previewEl.classList.toggle('paged', isPaged(src))
   previewEl.scrollTop = top
@@ -555,7 +601,7 @@ function applyMode(): void {
 function syncLivePreview(): void {
   if (!appearanceReady) return
   const inPlace = shownMode() === 'edit' && isMarkdownFile(active.path)
-  view.dispatch({ effects: livePreviewCompartment.reconfigure(inPlace ? livePreview((src) => previewImageSrc(active.path, src)) : []) })
+  view.dispatch({ effects: livePreviewCompartment.reconfigure(inPlace ? livePreview((src) => previewImageSrc(localPath(active.path), src)) : []) })
   editorEl.classList.toggle('live-preview', inPlace)
 }
 
@@ -571,8 +617,12 @@ async function save(as = false): Promise<boolean> {
   // Only a Markdown file has a TOC: anything else is saved as typed.
   if (isMarkdownFile(tab.path)) replaceSource(refreshStructure(source()))
   const content = source()
-  const path = await window.api.saveFile(as ? null : tab.path, tab.eol === '\n' ? content : content.replace(/\n/g, tab.eol))
+  const text = tab.eol === '\n' ? content : content.replace(/\n/g, tab.eol)
+  if (!as && isRemotePath(tab.path)) return saveRemote(tab, content, text)
+  // Save As of a remote file makes a local copy, which the tab then shows.
+  const path = await window.api.saveFile(as ? null : tab.path, text, as && isRemotePath(tab.path) ? nameOf(tab) : undefined)
   if (!path) return false
+  if (isRemotePath(tab.path)) tab.readOnly = false
   const pathChanged = path !== tab.path
   tab.path = path
   tab.saved = content
@@ -591,6 +641,52 @@ async function save(as = false): Promise<boolean> {
   }
   scheduleSession()
   return true
+}
+
+/**
+ * Save a remote tab over the connection. When the file changed on the server
+ * since it was opened, ask: overwrite it, take the server's version, or neither.
+ */
+async function saveRemote(tab: Tab, content: string, text: string): Promise<boolean> {
+  try {
+    let r = await window.api.remoteWriteFile(tab.path!, text, false)
+    if ('conflict' in r) {
+      const choice = await messageBox({
+        title: `${nameOf(tab)} changed on the server`,
+        detail: 'It was changed (or its state is unknown) since you opened it here. Overwrite it with your version, or load the version on the server? Loading replaces your changes here; Undo brings them back.',
+        // Enter takes the server's version (Undo gets yours back); overwriting the server's takes a click.
+        buttons: [{ label: 'Overwrite', kind: 'danger' }, { label: 'Load from server', kind: 'primary' }, { label: 'Cancel' }],
+        cancel: 2
+      })
+      if (choice === 2) return false
+      if (choice === 1) {
+        const f = await window.api.remoteReloadFile(tab.path!)
+        if ('error' in f) throw new Error(f.error)
+        await activate(tab)
+        replaceSource(lf(f.content))
+        tab.saved = lf(f.content)
+        tab.readOnly = !f.writable
+        updateDirty()
+        showActive()
+        return false
+      }
+      r = await window.api.remoteWriteFile(tab.path!, text, true)
+    }
+    tab.saved = content
+    tab.readOnly = false
+    if (tab === active) {
+      updateDirty()
+      showActive()
+    } else {
+      tab.dirty = textOf(tab) !== content
+      drawTabs()
+    }
+    scheduleSession()
+    return true
+  } catch (err) {
+    await alertBox(`Could not save ${nameOf(tab)} to the server`, `${errorMessage(err)}\n\nYour changes are still here; save again once that is fixed, or use Save As to keep a local copy.`)
+    return false
+  }
 }
 
 /**
@@ -630,13 +726,13 @@ const commands: Record<Command, () => void | Promise<void>> = {
   prevTab: () => cycleTab(-1),
   exportHtml: async () => {
     const font = await exportFontCss(true)
-    const env = await embeddedImageEnv(source(), active.path)
+    const env = await embeddedImageEnv(source(), localPath(active.path))
     await window.api.exportHtml(renderStandaloneHtml(source(), docTitle(), font, env), fileName())
   },
   exportPdf: async () => {
     const font = await exportFontCss(false)
     const s = settings()
-    const html = renderStandaloneHtml(source(), docTitle(), font, imageEnv(active.path, 'pdf'), { mode: 'pdf', pdfFont: s.pdfFont })
+    const html = renderStandaloneHtml(source(), docTitle(), font, imageEnv(localPath(active.path), 'pdf'), { mode: 'pdf', pdfFont: s.pdfFont })
     await window.api.exportPdf(html, fileName(), { paged: isPaged(source()), title: docTitle(), paper: s.pdfPaper, header: s.pdfHeader })
   },
   toc: () => replaceSource(toggleToc(source(), cursorLine())),
@@ -861,8 +957,9 @@ void initAppearance(view).then(() => {
   void run(restoreSession, 'Could not restore the last session').finally(sessionDone)
   // Notes clicked in the graph open behind it, like any other open.
   initGraphPane((p) => void run(() => openPath(p), 'Could not open the file'))
+  onRemoteFileOpen((p) => run(() => openRemote(p), 'Could not open the file'))
   // The shell starts in the explorer's folder, else the open file's folder (else home).
-  initTerminal({ cwd: () => currentRoot() ?? (active.path ? dirOf(active.path) : null), focusEditor: () => view.focus() })
+  initTerminal({ cwd: () => currentRoot() ?? (localPath(active.path) ? dirOf(active.path!) : null), focusEditor: () => view.focus() })
   return initSidebar((p) => run(() => openPath(p), 'Could not open the file'))
 })
 view.focus()

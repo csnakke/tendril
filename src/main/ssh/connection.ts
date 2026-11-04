@@ -63,6 +63,59 @@ function run(cmd: string, args: string[], opts: { input?: string; env?: Record<s
   })
 }
 
+// Remote files (Connection.readFile / writeFile). stat differs between GNU,
+// BusyBox and BSD/macOS, so each is tried; wc -c pads its number on macOS.
+const STAMP = `stamp() { m=$(stat -c %Y "$1" 2>/dev/null || stat -f %m "$1" 2>/dev/null || echo 0); n=$(wc -c < "$1" | tr -d ' '); echo "$m:$n"; }`
+
+const READ_FILE = `${STAMP}
+f=$1; max=$2
+[ -e "$f" ] || exit 4
+[ -d "$f" ] && exit 5
+[ -f "$f" ] || exit 6
+[ -r "$f" ] || exit 7
+s=$(stamp "$f"); n=\${s#*:}; m=\${s%%:*}
+w=0; [ -w "$f" ] && w=1
+echo "$n $m $w"
+[ "$n" -gt "$max" ] && exit 0
+cat -- "$f"
+`
+
+const WRITE_FILE = `${STAMP}
+f=$1; expect=$2
+if [ -L "$f" ]; then r=$(readlink -f -- "$f" 2>/dev/null) && [ -n "$r" ] && f=$r; fi
+if [ -e "$f" ]; then
+  [ -d "$f" ] && exit 5
+  if [ "$expect" = "?" ]; then echo; exit 9; fi
+  if [ -n "$expect" ] && [ "$(stamp "$f")" != "$expect" ]; then exit 9; fi
+  [ -w "$f" ] || exit 8
+fi
+d=$(dirname -- "$f"); b=$(basename -- "$f")
+t=
+if [ ! -e "$f" ] || [ -O "$f" ]; then t=$(mktemp "$d/.$b.tendril.XXXXXX" 2>/dev/null) || t=; fi
+if [ -n "$t" ]; then
+  if ! cat > "$t"; then rm -f -- "$t"; exit 10; fi
+  if [ -e "$f" ]; then
+    mode=$(stat -c %a "$f" 2>/dev/null || stat -f %Lp "$f" 2>/dev/null) && chmod "$mode" "$t"
+  else
+    chmod 644 "$t"
+  fi
+  if ! mv -f -- "$t" "$f"; then rm -f -- "$t"; exit 10; fi
+else
+  cat > "$f" || exit 10
+fi
+stamp "$f"
+`
+
+/** What the remote file scripts' exit codes mean. */
+const FILE_ERRORS: Record<number, string> = {
+  4: 'The file does not exist on the server; it may have been moved or deleted.',
+  5: 'It is a folder, not a file.',
+  6: 'It is not a regular file.',
+  7: 'You do not have permission to read it on the server.',
+  8: 'You do not have permission to write it on the server (it is read-only there).',
+  10: 'The server could not write the file (disk full, or the folder is read-only?).'
+}
+
 export class Connection {
   readonly label: string
   readonly hostId: string | null
@@ -239,6 +292,43 @@ fi
       }
     }
     return entries.sort((a, b) => Number(b.isDir) - Number(a.isDir) || a.name.localeCompare(b.name))
+  }
+
+  /**
+   * Run a POSIX sh script on the server with arguments, `input` on its standard
+   * input (exec sends the script itself that way). The script is kept free of
+   * backslashes, so any login shell passes it to sh unchanged.
+   */
+  private script(script: string, args: string[], input = '', timeout = 120_000): ReturnType<typeof run> {
+    return run('ssh', [...this.clientArgs(), this.hostname, ['sh', '-c', script, 'sh', ...args].map(shq).join(' ')], { input, timeout })
+  }
+
+  /**
+   * A file's bytes for the editor, with its stamp (modification time and size,
+   * to notice a change on the server before saving over it) and whether it can
+   * be written. Nothing is sent when it is larger than `max` bytes.
+   */
+  async readFile(path: string, max: number): Promise<{ data: Buffer; size: number; stamp: string; writable: boolean }> {
+    const r = await this.script(READ_FILE, [path, String(max)])
+    if (r.code !== 0) throw new Error(FILE_ERRORS[r.code] ?? reason(r.stderr))
+    const nl = r.stdout.indexOf(10)
+    const [size, mtime, writable] = r.stdout.subarray(0, nl).toString('utf8').trim().split(/\s+/)
+    return { data: r.stdout.subarray(nl + 1), size: Number(size) || 0, stamp: `${mtime}:${Number(size) || 0}`, writable: writable === '1' }
+  }
+
+  /**
+   * Save `content` to `path`. `expect` is the stamp it had when read: when the
+   * file has changed since (or `expect` is '?', not known), nothing is written
+   * and the result says so; '' writes regardless. A file is replaced through a
+   * temporary file next to it and a rename, so a broken connection never leaves
+   * half of it; one not owned by you (or in a folder you cannot write) is
+   * written in place, which keeps its owner. Mode and symlinks are kept.
+   */
+  async writeFile(path: string, content: string, expect: string): Promise<{ stamp: string } | { conflict: true }> {
+    const r = await this.script(WRITE_FILE, [path, expect], content)
+    if (r.code === 9) return { conflict: true }
+    if (r.code !== 0) throw new Error(FILE_ERRORS[r.code] ?? reason(r.stderr))
+    return { stamp: r.stdout.toString('utf8').trim() }
   }
 
   /** Start or stop one port forward on the open connection. */

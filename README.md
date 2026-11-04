@@ -99,7 +99,7 @@ Tendril is a deliberate merge of the features people actually use in each tool:
 | 🪟 | **Three views** | Edit, Split and Reading for Markdown notes — with Edit always rendering Markdown in place as you type |
 | ✏️ | **Multiple cursors** | Sublime-style: `Ctrl+D`, column carets, split selection into lines |
 | 🐍 | **Code & text files** | `.py` and `.js` files highlighted and linted (Ruff, ESLint) with one-click fixes; `.txt`, `.env` and other text files open as plain text ([details](#-code--text-files)) |
-| 🌐 | **Remote files over SSH** | A Remote section in the explorer: browse a server, drag to upload, right-click to download — resumable rsync transfers of any size, port forwarding, keys and passwords kept in `pass` ([details](#-remote-files-over-ssh)) |
+| 🌐 | **Remote files over SSH** | A Remote section in the explorer: browse a server, edit its text files in tabs (Save writes back), drag to upload, right-click to download — resumable rsync transfers of any size, port forwarding, keys and passwords kept in `pass` ([details](#-remote-files-over-ssh)) |
 | 🔑 | **sudo auto-paste** | Saved sudo passwords filled in safely — locally and on servers (secret-marker prompts, one try then stop), `Ctrl+Alt+P` by hand ([details](#-passwords-filled-in-from-pass)) |
 | 👁️ | **See saved passwords** | An eye on every password field; a saved one is shown only after the password store's passphrase, checked every time |
 | 🖥️ | **Built-in terminal** | Your shell in a panel under the editor (``Ctrl+` ``), **in tmux** with your own config (Settings › TMUX), in your theme's colours and its own font, with a 🔑 button that pastes the saved sudo password ([details](#-terminal)) |
@@ -795,16 +795,38 @@ text the usual way instead.
 ## 🌐 Remote files over SSH
 
 The explorer has a **Remote** section under your local folders. Connect to a server, browse it
-like a local folder, and move files either way:
+like a local folder, edit its text files, and move files either way:
 
 | | |
 |---|---|
 | 🔌 | **Connect**: click **Remote** › a saved host, or **Quick Connect…** with `user@host[:port]` (that one uses your own `~/.ssh` keys, agent and config) |
+| ✏️ | **Edit**: click a remote text file to open it in an editor tab; **Save** (`Ctrl+S`) writes it back to the server ([details](#%EF%B8%8F-editing-files-on-the-server)) |
 | ⬆️ | **Upload**: drag files or folders (from the explorer or your file manager) onto a remote folder; or right-click a remote folder › Upload Files / Folders Here…; or right-click a local item › Upload to *host:folder* (the remote folder you last opened) |
 | ⬇️ | **Download**: right-click a remote file or folder › Download to *your explorer folder*, or Download to… |
 | 📊 | **Transfers** show as a chip in the status bar: progress, speed and time left per transfer, Stop and Resume |
 | 🖥️ | **Shell**: the terminal button opens a shell on the host in the built-in terminal, over the same connection — no second login. It gets a **tmux window of its own**, named after the host, with just the server's prompt (no ssh command printed); logging out closes it and your local shell is still in window 0 |
 | 🔀 | **Port forwards** of the host show as switches under the header: click to start or stop one |
+
+### ✏️ Editing files on the server
+
+Click a file in the Remote section and it opens in a tab like a local one: the same rule decides
+what opens (text, up to 10 MB per file, same as local files), and Markdown gets Edit / Split /
+Reading as usual. The status bar shows **host › folders › file**. It is read and saved over the
+open connection, so nothing logs in again.
+
+- 💾 **Save writes it back safely**: to a temporary file next to it, then renamed over it, so a
+  dropped connection never leaves half a file. The file keeps its permissions, and a symlink
+  stays a symlink (its target is saved). A file owned by someone else, or in a folder you cannot
+  write to, is written in place instead, which keeps its owner.
+- ⚠️ **Changed on the server since you opened it?** Save asks: **Overwrite** it with your version,
+  **Load from server** (your changes go; `Ctrl+Z` brings them back), or Cancel.
+- 🔒 **No write permission**: it opens anyway, the status bar says *read-only on the server*, and
+  Save explains why it cannot write it.
+- 🔌 **Connection gone** (or connected to another host): your changes stay in the tab, and Save
+  says to connect to that host first. **Save As** keeps a local copy instead.
+- Unsaved remote tabs come back after a restart like any other; save them once you are connected
+  again. Images a remote note links to are not shown (they would have to be downloaded).
+- Works with any server shell: Linux (GNU or BusyBox) and macOS/BSD.
 
 ### ⚡ Quick and reliable, at any size
 
